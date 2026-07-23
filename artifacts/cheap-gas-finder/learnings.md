@@ -41,3 +41,23 @@ date: 2026-07-23
 **에피소드**: `components/gas/station-list.tsx`의 순위 배지를 처음엔 `Badge`로 만들려다, variant는 색상만 다루고 크기·모양(원형)은 다루지 않는다는 걸 확인하고 plain `<span className="flex size-6 ... rounded-full bg-primary text-primary-foreground">`로 바꿨다. `bg-primary text-primary-foreground`처럼 semantic token은 그대로 재사용해 shadcn-guard의 우선순위 규칙(variant → semantic token → CSS 변수)은 지켰다.
 
 **증거**: commit 93d5c45, `components/gas/station-list.tsx`
+
+---
+
+## 카카오맵 JS 키가 "NotAuthorizedError: disabled OPEN_MAP_AND_LOCAL service"로 막혀 있다
+
+**지시문**: `.env.local`의 `NEXT_PUBLIC_KAKAO_MAP_KEY`(`7e7eb7ae093bdc9e385572119dbf67ff`)로 카카오맵 SDK(`dapi.kakao.com/v2/maps/sdk.js`)를 로드하면 실제로 `{"errorType":"NotAuthorizedError","message":"App(주유소알리미) disabled OPEN_MAP_AND_LOCAL service."}`를 반환한다. 이는 네트워크·CORS 문제가 아니라 **Kakao Developers 콘솔에서 해당 앱("주유소알리미")에 카카오맵(OPEN_MAP_AND_LOCAL) 제품이 활성화되어 있지 않다는 뜻**이다. 사용자가 developers.kakao.com → 해당 앱 → 제품 설정 → 지도에서 활성화해야 Task 4의 실제 지도 렌더링(S1-4, S5)이 어떤 환경에서도 동작한다. 이 학습이 재검색되면(같은 에러 문자열) 코드 문제로 오인해 디버깅하지 말고 바로 사용자에게 콘솔 설정을 확인하라고 안내한다.
+
+**에피소드**: Task 4 체크포인트에서 Browser MCP로 실 브라우저 검증을 시도했다. 먼저 이 sandbox 브라우저가 geolocation 권한을 자동으로 "denied" 처리한다는 걸 확인했고(재시도 UI가 없는 Task 3~4 범위라 우회 불가), geolocation과 무관하게 카카오맵 자체가 동작하는지 확인하려고 실 키로 SDK 스크립트를 직접 로드했다. `<script>` 태그 삽입으로는 로드가 실패했고(sandbox의 스크립트 인젝션 제약으로 추정), `navigate()`로 SDK URL에 직접 이동해 응답 바디를 읽자 위 에러 메시지가 그대로 나왔다. 즉 sandbox 제약이 아니라 실제 API 키 설정 문제였다.
+
+**증거**: 2026-07-23, `navigate` 후 `get_page_text`로 확인한 `https://dapi.kakao.com/v2/maps/sdk.js?appkey=7e7eb7ae093bdc9e385572119dbf67ff&autoload=false` 응답 본문. 코드(`lib/kakao-loader.ts`, `components/gas/map-view.tsx`)는 fake `window.kakao`로 단위 테스트 통과(commit bae3374)했지만, 실 SDK로는 아직 렌더 확인이 안 된 상태 — 사용자의 콘솔 설정 이후 재확인 필요.
+
+---
+
+## 이 sandbox Browser MCP 창에서는 geolocation이 항상 "denied"다
+
+**지시문**: 이 프로젝트에서 Browser MCP(`mcp__Claude_Browser__*`)로 위치 기반 기능(S1, S2, S8 등)을 시각적으로 검증하려 하지 않는다 — `navigator.permissions.query({name:'geolocation'})`이 항상 `"denied"`를 반환하며, 프롬프트도 뜨지 않고 재시도로 우회할 수도 없다. 위치 기반 happy path의 실제 화면 확인은 사용자에게 로컬 `bun run dev` + 본인 브라우저에서 확인해달라고 요청하거나, Playwright `context.grantPermissions(['geolocation'])`(최종 e2e 체크포인트에서 예정됨)로 대체한다.
+
+**에피소드**: Task 3에서 처음 발견(빈 화면, 콘솔 에러 없음, `/api/stations` 호출도 없음), Task 4에서 `navigator.permissions.query`로 재확인해 "denied"임을 명시적으로 검증했다.
+
+**증거**: 2026-07-23, Task 3·Task 4 세션에서 반복 확인. `navigator.permissions.query({name:'geolocation'}).then(r => r.state)` → `"denied"`
