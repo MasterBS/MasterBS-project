@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { BrandKey, FuelType, Station } from "@/types/station";
 
 export type UseStationsParams = {
@@ -17,6 +17,7 @@ export function useStations({ lat, lng, fuel, brands, selfOnly }: UseStationsPar
   const [status, setStatus] = useState<UseStationsStatus>("idle");
   const [stations, setStations] = useState<Station[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const brandsKey = brands && brands.length > 0 ? brands.join(",") : "";
 
@@ -52,7 +53,9 @@ export function useStations({ lat, lng, fuel, brands, selfOnly }: UseStationsPar
       });
 
     return () => controller.abort();
-  }, [lat, lng, fuel, brandsKey, selfOnly]);
+  }, [lat, lng, fuel, brandsKey, selfOnly, retryCount]);
 
-  return { status, stations, error };
+  const retry = useCallback(() => setRetryCount((count) => count + 1), []);
+
+  return { status, stations, error, retry };
 }
