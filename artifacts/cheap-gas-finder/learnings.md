@@ -56,10 +56,20 @@ date: 2026-07-23
 
 ---
 
-## 이 sandbox Browser MCP 창에서는 geolocation이 항상 "denied"다
+## 이 sandbox Browser MCP 창에서는 geolocation이 항상 "denied"다 — happy path는 못 보지만 거부 상태 UI는 실제로 검증된다
 
-**지시문**: 이 프로젝트에서 Browser MCP(`mcp__Claude_Browser__*`)로 위치 기반 기능(S1, S2, S8 등)을 시각적으로 검증하려 하지 않는다 — `navigator.permissions.query({name:'geolocation'})`이 항상 `"denied"`를 반환하며, 프롬프트도 뜨지 않고 재시도로 우회할 수도 없다. 위치 기반 happy path의 실제 화면 확인은 사용자에게 로컬 `bun run dev` + 본인 브라우저에서 확인해달라고 요청하거나, Playwright `context.grantPermissions(['geolocation'])`(최종 e2e 체크포인트에서 예정됨)로 대체한다.
+**지시문**: 이 프로젝트에서 Browser MCP(`mcp__Claude_Browser__*`)로 위치 *허용* happy path(S1, S2 등)를 시각적으로 검증하려 하지 않는다 — `navigator.permissions.query({name:'geolocation'})`이 항상 `"denied"`를 반환하며, 프롬프트도 뜨지 않고 재시도로 우회할 수도 없다. 허용 흐름은 사용자에게 로컬 `bun run dev` + 본인 브라우저에서 확인해달라고 요청하거나, Playwright `context.grantPermissions(['geolocation'])`(최종 e2e 체크포인트에서 예정됨)로 대체한다. 반대로 위치 **거부** 상태 UI(S8 등)는 이 sandbox가 항상 거부하는 덕분에 오히려 실제 앱에서 그대로 재현·검증할 수 있다 — 별도 mock 없이 `bun run dev` 페이지를 열기만 하면 거부 분기가 실제로 렌더링된다.
 
-**에피소드**: Task 3에서 처음 발견(빈 화면, 콘솔 에러 없음, `/api/stations` 호출도 없음), Task 4에서 `navigator.permissions.query`로 재확인해 "denied"임을 명시적으로 검증했다.
+**에피소드**: Task 3~4에서 처음 발견(빈 화면, 콘솔 에러 없음, `/api/stations` 호출도 없음) — 당시엔 거부 상태에 대한 UI 자체가 없어 "막힌 것"으로만 봤다. Task 7에서 위치 거부 UI(`LocationDeniedMessage`)를 구현한 뒤 같은 sandbox에서 `bun run dev`로 열어보니, 별도 조작 없이 실제로 "위치 권한이 필요해요" 화면이 렌더링되고 "다시 시도" 클릭도 콘솔 에러 없이 동작함을 확인했다 — 이 sandbox의 제약이 오히려 이 특정 시나리오의 무료 실 브라우저 증거가 됐다.
 
-**증거**: 2026-07-23, Task 3·Task 4 세션에서 반복 확인. `navigator.permissions.query({name:'geolocation'}).then(r => r.state)` → `"denied"`
+**증거**: 2026-07-23, Task 7 세션. `navigator.permissions.query({name:'geolocation'}).then(r => r.state)` → `"denied"`; `bun run dev` 페이지 스크린샷에서 S8 UI 확인.
+
+---
+
+## next/dynamic(ssr:false) 컴포넌트는 테스트 파일 안에서 "처음 마운트되는 테스트"에서만 비동기로 나타난다
+
+**지시문**: `next/dynamic(() => import(...), { ssr: false })`로 감싼 컴포넌트를 RTL로 테스트할 때, 같은 테스트 파일에서 그 컴포넌트가 실제로 렌더링 조건을 만족하는 **첫 번째** 테스트에서는 `render()` 직후 동기 `getByTestId`/`getByText` 대신 `await screen.findByTestId(...)`(또는 `waitFor`)를 써야 한다. dynamic import가 아직 resolve되지 않아 첫 렌더에는 아무것도 안 보인다. 그 이후 테스트들은 모듈이 캐시돼 동기 조회로도 통과하므로, 실패는 테스트 실행 순서에 따라 나타났다 사라졌다 한다.
+
+**에피소드**: Task 7에서 `app/page.tsx`의 성공 분기를 "0곳/부분/5곳"으로 세분화하면서, 그동안 `stations: []`로 목업하던 여러 테스트([S2][S3][S4-1])가 더 이상 `MapView`를 렌더링하는 분기를 타지 않게 됐다. 그 결과 파일 안에서 `MapView`가 실제로 렌더링되는 **첫** 테스트가 기존 [S5] 테스트로 바뀌었고, 그 테스트의 동기 `getByTestId("map-view-mock")`이 `Unable to find element`로 실패했다. 컴포넌트나 로직 버그가 아니라 dynamic import 타이밍 문제였다 — 해당 첫 조회를 `await screen.findByTestId(...)`로 바꿔 해결했다.
+
+**증거**: commit 4dd5feb, `app/page.test.tsx`의 `[S5] shares selection state...` 테스트
