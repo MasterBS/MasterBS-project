@@ -212,7 +212,9 @@
 
 ---
 
-### Task 8: PWA (manifest + 아이콘 + 서비스워커 → 홈 화면 설치)
+### Task 8: PWA (manifest + 아이콘 + 서비스워커 → 홈 화면 설치) — ✅ 기술 조건 완료, 설치 실행은 Human review 대기
+
+> 아이콘은 외부 디자인 툴 없이 순수 PNG 인코더 스크립트로 생성(짙은 회색 배경 + 흰 원, 앱 테마 `--primary` 계열). manifest·SW·아이콘 서빙을 실 프로덕션 서버(Browser MCP)로 확인 완료 — 증거 `evidence/task-8-pwa.md`. `beforeinstallprompt` 이벤트 자체는 이 세션의 자동화된 브라우저가 캡처하지 못했다(geolocation·Kakao 스크립트 인젝션과 같은 패턴으로 추정, 기술 조건 자체는 fetch로 직접 검증했으므로 무관). S10의 "아이콘 실행 시 독립 standalone 실행"은 plan에 이미 명시된 대로 실기기 설치가 필요한 Human review 대상 — spec.md 체크박스는 사용자 확인 후에 켠다.
 
 - **담당 판정 기준**: S10
 - **크기**: M
@@ -226,10 +228,10 @@
 
 ---
 
-### Checkpoint: Tasks 5~8 이후
-- [ ] 모든 테스트 통과: `bun run test`
-- [ ] 빌드 성공: `bun run build`
-- [ ] 커버리지 검사: `scripts/spec-coverage.sh cheap-gas-finder --tests`
+### Checkpoint: Tasks 5~8 이후 — ✅ 통과
+- [x] 모든 테스트 통과: `bun run test` (48 passed)
+- [x] 빌드 성공: `bun run build`
+- [x] 커버리지 검사: `scripts/spec-coverage.sh cheap-gas-finder --tests` (커버리지 OK — 모든 기준 인용됨)
 
 ---
 
