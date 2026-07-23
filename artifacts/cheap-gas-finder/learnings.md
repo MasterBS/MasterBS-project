@@ -64,6 +64,8 @@ date: 2026-07-23
 
 **증거**: 2026-07-23, Task 7 세션. `navigator.permissions.query({name:'geolocation'}).then(r => r.state)` → `"denied"`; `bun run dev` 페이지 스크린샷에서 S8 UI 확인.
 
+**재발(Task 8)**: `beforeinstallprompt`도 같은 패턴이었다 — 리스너를 붙이고 재로드해도 캡처되지 않았다. geolocation 거부·이전 Kakao 스크립트 인젝션 실패까지 합쳐 이 sandbox Browser MCP는 **사용자 참여 휴리스틱에 의존하는 브라우저 이벤트/프롬프트(permission prompt, `beforeinstallprompt` 등)를 기술 조건 충족 여부와 무관하게 억제**하는 것으로 보인다. 이런 이벤트가 필요한 검증은 처음부터 시도하지 말고, 이벤트를 유발하는 근본 조건(manifest 내용, SW 등록 상태, 응답 코드 등)을 `fetch`/JS로 직접 확인하는 쪽으로 바로 넘어간다.
+
 ---
 
 ## next/dynamic(ssr:false) 컴포넌트는 테스트 파일 안에서 "처음 마운트되는 테스트"에서만 비동기로 나타난다
@@ -73,3 +75,13 @@ date: 2026-07-23
 **에피소드**: Task 7에서 `app/page.tsx`의 성공 분기를 "0곳/부분/5곳"으로 세분화하면서, 그동안 `stations: []`로 목업하던 여러 테스트([S2][S3][S4-1])가 더 이상 `MapView`를 렌더링하는 분기를 타지 않게 됐다. 그 결과 파일 안에서 `MapView`가 실제로 렌더링되는 **첫** 테스트가 기존 [S5] 테스트로 바뀌었고, 그 테스트의 동기 `getByTestId("map-view-mock")`이 `Unable to find element`로 실패했다. 컴포넌트나 로직 버그가 아니라 dynamic import 타이밍 문제였다 — 해당 첫 조회를 `await screen.findByTestId(...)`로 바꿔 해결했다.
 
 **증거**: commit 4dd5feb, `app/page.test.tsx`의 `[S5] shares selection state...` 테스트
+
+---
+
+## sharp/ImageMagick/PIL 없이 PNG 아이콘이 필요하면 순수 Node `zlib`로 직접 인코딩한다
+
+**지시문**: 이 머신에는 `sharp`(bun의 `ignoreScripts`로 네이티브 바인딩 미설치), ImageMagick(`convert`/`magick`), Python PIL이 전부 없고 macOS `sips`는 기존 이미지 리사이즈만 가능해 무(無)에서 생성은 못 한다. PWA 아이콘처럼 간단한 단색/도형 PNG가 필요하면, `node:zlib`의 `deflateSync`와 표준 CRC32 구현만으로 PNG 청크(IHDR/IDAT/IEND)를 직접 조립하는 스크립트를 짠다 — 픽셀 단위로 RGBA 버퍼를 채우고 zlib으로 압축하면 외부 의존성 없이 유효한 PNG를 만들 수 있다.
+
+**에피소드**: Task 8에서 `public/icons/icon-192.png`·`icon-512.png`가 필요했다. `sharp`/`convert`/`magick`/PIL을 차례로 확인했으나 전부 사용 불가였다. `/private/tmp/.../generate-pwa-icons.mjs`에 최소 PNG 인코더(CRC32 테이블 + IHDR/IDAT/IEND 청크 조립)를 작성해 짙은 회색 배경 + 흰 원 아이콘을 두 크기로 생성했고, `file`·`sips -g pixelWidth`로 유효성과 치수를 확인했다.
+
+**증거**: commit 7745ed4, `public/icons/icon-192.png`(1210 bytes, PNG 192x192 RGBA)·`icon-512.png`(6486 bytes, PNG 512x512 RGBA) — `file`/`sips` 출력으로 검증
