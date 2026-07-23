@@ -60,7 +60,14 @@ Claude Code hooks 기반 자동 품질 게이트 (`.claude/settings.json`)
 | `*.spec.ts` | E2E 테스트 (Playwright, `e2e/`) |
 
 테스트 이름에는 담당하는 spec 판정 기준 ID를 `[S1-1]` 형식으로 인용합니다. 자세한 테스팅 원칙은 [CLAUDE.md → Testing](./CLAUDE.md#testing)을 참조합니다.
+## 환경 변수
 
+프로젝트는 오피넷 API 키를 서버 환경 변수로 사용합니다. 다음 값을 Vercel 또는 로컬 `.env.local`에 등록하세요:
+
+- `OPINET_API_KEY=F260723461`
+- `NEXT_PUBLIC_KAKAO_MAP_KEY=<your-kakao-map-key>`
+
+로컬 개발 시에는 `.env.local` 파일을 생성하고 `.env.example`를 참조할 수 있습니다.
 ## Claude Code 워크플로우
 
 ### 코어 경로
