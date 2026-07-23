@@ -5,9 +5,11 @@ import dynamic from "next/dynamic";
 import { Loader2Icon } from "lucide-react";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useStations } from "@/hooks/use-stations";
+import { BRAND_KEYS } from "@/config/opinet";
 import { FuelToggle } from "@/components/gas/fuel-toggle";
+import { Filters } from "@/components/gas/filters";
 import { StationList } from "@/components/gas/station-list";
-import type { FuelType } from "@/types/station";
+import type { BrandKey, FuelType } from "@/types/station";
 
 const MapView = dynamic(() => import("@/components/gas/map-view").then((m) => m.MapView), {
   ssr: false,
@@ -17,12 +19,16 @@ const KAKAO_MAP_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY ?? "";
 
 export default function Page() {
   const [fuel, setFuel] = useState<FuelType>("gasoline");
+  const [brands, setBrands] = useState<BrandKey[]>(BRAND_KEYS);
+  const [selfOnly, setSelfOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const geolocation = useGeolocation();
   const stations = useStations({
     lat: geolocation.coords?.lat ?? null,
     lng: geolocation.coords?.lng ?? null,
     fuel,
+    brands,
+    selfOnly,
   });
 
   const isLoading =
@@ -34,6 +40,14 @@ export default function Page() {
     <main className="mx-auto max-w-6xl p-4">
       <h1 className="mb-4 text-lg font-bold">내 주변 저가 주유소 TOP5</h1>
       <FuelToggle value={fuel} onChange={setFuel} />
+      <div className="mt-3">
+        <Filters
+          brands={brands}
+          onBrandsChange={setBrands}
+          selfOnly={selfOnly}
+          onSelfOnlyChange={setSelfOnly}
+        />
+      </div>
       <div className="mt-4">
         {isLoading && (
           <div className="flex flex-col items-center justify-center gap-3 py-24">

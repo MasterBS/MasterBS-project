@@ -19,6 +19,8 @@ export const BRAND_LABEL_MAP: Record<BrandKey, string> = {
   ETC: "자가상표/기타",
 };
 
+export const BRAND_KEYS: BrandKey[] = [...KNOWN_BRAND_CODES, "ETC"];
+
 export const RADIUS_STEPS_M = [3000, 5000, 10000] as const;
 
 export const MIN_RESULT_COUNT = 5;

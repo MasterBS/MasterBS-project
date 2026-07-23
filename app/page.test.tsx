@@ -109,4 +109,44 @@ describe("Page [S1-1][S2]", () => {
 
     expect(screen.getByTestId("map-view-mock")).toHaveAttribute("data-selected-id", "2");
   });
+
+  it("[S3] unchecking a brand filter re-calls useStations with the remaining brands", async () => {
+    const user = userEvent.setup();
+    useGeolocationMock.mockReturnValue({
+      status: "success",
+      coords: { lat: 37.56, lng: 127.0 },
+      retry: vi.fn(),
+    });
+    useStationsMock.mockReturnValue({ status: "success", stations: [], error: null });
+
+    render(<Page />);
+
+    expect(useStationsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ brands: ["SKE", "GSC", "HDO", "SOL", "ETC"] }),
+    );
+
+    await user.click(screen.getByLabelText("GS칼텍스"));
+
+    expect(useStationsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ brands: ["SKE", "HDO", "SOL", "ETC"] }),
+    );
+  });
+
+  it("[S4-1] turning on the self-service filter re-calls useStations with selfOnly=true", async () => {
+    const user = userEvent.setup();
+    useGeolocationMock.mockReturnValue({
+      status: "success",
+      coords: { lat: 37.56, lng: 127.0 },
+      retry: vi.fn(),
+    });
+    useStationsMock.mockReturnValue({ status: "success", stations: [], error: null });
+
+    render(<Page />);
+
+    expect(useStationsMock).toHaveBeenLastCalledWith(expect.objectContaining({ selfOnly: false }));
+
+    await user.click(screen.getByLabelText("셀프주유소만 보기"));
+
+    expect(useStationsMock).toHaveBeenLastCalledWith(expect.objectContaining({ selfOnly: true }));
+  });
 });
