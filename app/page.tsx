@@ -72,6 +72,7 @@ export default function Page() {
                 stations={stations.stations}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
+                currentLocation={geolocation.coords}
               />
             </div>
           </div>

@@ -19,6 +19,8 @@ function makeStation(overrides: Partial<Station> = {}): Station {
   };
 }
 
+const CURRENT_LOCATION = { lat: 37.5587543, lng: 127.0008881 };
+
 describe("StationList [S1-2]", () => {
   it("[S1-2] renders up to 5 items with rank, name, brand, formatted distance and price", () => {
     const stations = [
@@ -29,7 +31,7 @@ describe("StationList [S1-2]", () => {
       makeStation({ id: "5", name: "5위주유소", price: 1900, distance: 1049 }),
     ];
 
-    render(<StationList stations={stations} />);
+    render(<StationList stations={stations} currentLocation={CURRENT_LOCATION} />);
 
     expect(screen.getAllByRole("listitem")).toHaveLength(5);
 
@@ -47,7 +49,7 @@ describe("StationList [S1-2]", () => {
   });
 
   it("[S1-2] renders fewer than 5 items when fewer stations are given", () => {
-    render(<StationList stations={[makeStation()]} />);
+    render(<StationList stations={[makeStation()]} currentLocation={CURRENT_LOCATION} />);
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
   });
 
@@ -56,7 +58,7 @@ describe("StationList [S1-2]", () => {
     const onSelect = vi.fn();
     const stations = [makeStation({ id: "1" }), makeStation({ id: "2", name: "다른주유소" })];
 
-    render(<StationList stations={stations} onSelect={onSelect} />);
+    render(<StationList stations={stations} onSelect={onSelect} currentLocation={CURRENT_LOCATION} />);
     await user.click(screen.getByText("다른주유소"));
 
     expect(onSelect).toHaveBeenCalledWith("2");
@@ -65,7 +67,7 @@ describe("StationList [S1-2]", () => {
   it("[S5] marks the station matching selectedId as pressed/selected", () => {
     const stations = [makeStation({ id: "1" }), makeStation({ id: "2", name: "다른주유소" })];
 
-    render(<StationList stations={stations} selectedId="2" />);
+    render(<StationList stations={stations} selectedId="2" currentLocation={CURRENT_LOCATION} />);
 
     expect(screen.getByText("다른주유소").closest('[aria-pressed]')).toHaveAttribute(
       "aria-pressed",
@@ -75,5 +77,37 @@ describe("StationList [S1-2]", () => {
       "aria-pressed",
       "false",
     );
+  });
+
+  it("[S6] opens the Kakao route URL in a new tab when 길찾기 is clicked", async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    const station = makeStation({ id: "1", lat: 37.6, lng: 127.1 });
+
+    render(<StationList stations={[station]} currentLocation={CURRENT_LOCATION} />);
+    await user.click(screen.getByRole("button", { name: "길찾기" }));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const [url, target] = openSpy.mock.calls[0];
+    expect(target).toBe("_blank");
+    const parsed = new URL(String(url));
+    expect(parsed.searchParams.get("sp")).toBe("37.5587543,127.0008881");
+    expect(parsed.searchParams.get("ep")).toBe("37.6,127.1");
+
+    openSpy.mockRestore();
+  });
+
+  it("[S6] clicking 길찾기 does not also select the station", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "open").mockImplementation(() => null);
+    const onSelect = vi.fn();
+    const station = makeStation({ id: "1" });
+
+    render(<StationList stations={[station]} onSelect={onSelect} currentLocation={CURRENT_LOCATION} />);
+    await user.click(screen.getByRole("button", { name: "길찾기" }));
+
+    expect(onSelect).not.toHaveBeenCalled();
+
+    vi.restoreAllMocks();
   });
 });

@@ -181,7 +181,9 @@
 
 ---
 
-### Task 6: 카카오맵 길찾기 연동
+### Task 6: 카카오맵 길찾기 연동 — ✅ 완료
+
+> URL 빌더 + 버튼 클릭 동작은 단위 테스트로 확인(commit 예정, `lib/directions.test.ts`·`station-list.test.tsx`의 `[S6]`). Task 4와 달리 여기는 외부 SDK 설정 불확실성이 없는 순수 `window.open` 호출이라, 실 브라우저 스크린샷 없이 단위 테스트를 최저 증명 경계로 채택 — 실제 새 탭 오픈까지 포함한 전체 확인은 위치 허용이 필요해 최종 Playwright e2e로 이월(같은 샌드박스 제약, `learnings.md` 참고).
 
 - **담당 판정 기준**: S6
 - **크기**: S

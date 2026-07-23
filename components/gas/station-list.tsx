@@ -1,4 +1,7 @@
+import { NavigationIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { buildKakaoRouteUrl, type LatLng } from "@/lib/directions";
 import { cn } from "@/lib/utils";
 import type { Station } from "@/types/station";
 
@@ -17,10 +20,12 @@ export function StationList({
   stations,
   selectedId,
   onSelect,
+  currentLocation,
 }: {
   stations: Station[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  currentLocation: LatLng;
 }) {
   return (
     <ul className="flex flex-col gap-2">
@@ -55,7 +60,22 @@ export function StationList({
                     {station.brandLabel} · {formatDistance(station.distance)}
                   </p>
                 </div>
-                <div className="shrink-0 text-right text-sm font-bold">{formatPrice(station.price)}</div>
+                <div className="shrink-0 text-right">
+                  <div className="text-sm font-bold">{formatPrice(station.price)}</div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-1"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      window.open(buildKakaoRouteUrl(currentLocation, station), "_blank");
+                    }}
+                  >
+                    <NavigationIcon data-icon="inline-start" />
+                    길찾기
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </li>
