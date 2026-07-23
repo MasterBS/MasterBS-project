@@ -97,7 +97,7 @@
 
 ---
 
-### Task 2: 오피넷 조회 서비스 + 검색 Route Handler
+### Task 2: 오피넷 조회 서비스 + 검색 Route Handler — ✅ 완료
 
 - **담당 판정 기준**: S1-3, S7-1, INV-1
 - **크기**: M
@@ -115,10 +115,10 @@
 
 ---
 
-### Checkpoint: Tasks 1~2 이후
-- [ ] 모든 테스트 통과: `bun run test`
-- [ ] 빌드 성공: `bun run build`
-- [ ] `GET /api/stations?lat=..&lng=..&fuel=gasoline`가 실제 오피넷 키로 정렬된 TOP5 JSON을 반환 (Browser MCP 또는 curl로 일회성 확인, 증거 `artifacts/cheap-gas-finder/evidence/checkpoint-1.json`)
+### Checkpoint: Tasks 1~2 이후 — ✅ 통과
+- [x] 모든 테스트 통과: `bun run test` (14 passed)
+- [x] 빌드 성공: `bun run build`
+- [x] `GET /api/stations?lat=..&lng=..&fuel=gasoline`가 실제 오피넷 키로 정렬된 TOP5 JSON을 반환 (curl로 일회성 확인, 증거 `artifacts/cheap-gas-finder/evidence/checkpoint-1.json`)
 
 ---
 
