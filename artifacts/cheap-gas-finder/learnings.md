@@ -50,7 +50,9 @@ date: 2026-07-23
 
 **에피소드**: Task 4 체크포인트에서 Browser MCP로 실 브라우저 검증을 시도했다. 먼저 이 sandbox 브라우저가 geolocation 권한을 자동으로 "denied" 처리한다는 걸 확인했고(재시도 UI가 없는 Task 3~4 범위라 우회 불가), geolocation과 무관하게 카카오맵 자체가 동작하는지 확인하려고 실 키로 SDK 스크립트를 직접 로드했다. `<script>` 태그 삽입으로는 로드가 실패했고(sandbox의 스크립트 인젝션 제약으로 추정), `navigate()`로 SDK URL에 직접 이동해 응답 바디를 읽자 위 에러 메시지가 그대로 나왔다. 즉 sandbox 제약이 아니라 실제 API 키 설정 문제였다.
 
-**증거**: 2026-07-23, `navigate` 후 `get_page_text`로 확인한 `https://dapi.kakao.com/v2/maps/sdk.js?appkey=7e7eb7ae093bdc9e385572119dbf67ff&autoload=false` 응답 본문. 코드(`lib/kakao-loader.ts`, `components/gas/map-view.tsx`)는 fake `window.kakao`로 단위 테스트 통과(commit bae3374)했지만, 실 SDK로는 아직 렌더 확인이 안 된 상태 — 사용자의 콘솔 설정 이후 재확인 필요.
+**증거**: 2026-07-23, `navigate` 후 `get_page_text`로 확인한 `https://dapi.kakao.com/v2/maps/sdk.js?appkey=7e7eb7ae093bdc9e385572119dbf67ff&autoload=false` 응답 본문. 코드(`lib/kakao-loader.ts`, `components/gas/map-view.tsx`)는 fake `window.kakao`로 단위 테스트 통과(commit bae3374)했다.
+
+**후속(같은 날)**: 사용자가 Kakao Developers 콘솔에서 카카오맵 제품을 활성화한 뒤, 같은 URL이 정상 SDK 응답을 반환함을 재확인했다. 이어서 실 API 키 + Task 2 체크포인트의 실 좌표(`evidence/checkpoint-1.json`)로 브라우저에서 직접 마커·bounds 렌더링을 확인해 S1-4·S5를 증명했다. 증거: `evidence/task-4-map-render.md`.
 
 ---
 

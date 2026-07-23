@@ -139,9 +139,9 @@
 
 ---
 
-### Task 4: 카카오맵 표시 + 리스트-지도 연동 + 자동 줌 — ⚠️ 코드 완료, 시각 검증 보류
+### Task 4: 카카오맵 표시 + 리스트-지도 연동 + 자동 줌 — ✅ 완료
 
-> 코드·단위 테스트는 완료(commit bae3374, fake `window.kakao`로 마커 개수/bounds.extend/선택 강조 검증). 실 브라우저 스크린샷 검증은 카카오 앱("주유소알리미")에 카카오맵(OPEN_MAP_AND_LOCAL) 제품이 비활성 상태라 보류 — 사용자가 developers.kakao.com에서 활성화 후 재시도 필요. 상세: `learnings.md`의 "카카오맵 JS 키가 NotAuthorizedError..." 항목.
+> 코드·단위 테스트 완료(commit bae3374, fake `window.kakao`로 마커 개수/bounds.extend/선택 강조 검증). 실 SDK 시각 검증은 사용자가 Kakao Developers 콘솔에서 카카오맵 제품을 활성화한 뒤(2026-07-23) 실 API 키 + Task 2 체크포인트의 실 좌표로 확인 완료 — 증거 `evidence/task-4-map-render.md`. 앱 페이지를 통한 geolocation 경유 end-to-end는 샌드박스 제약으로 최종 Playwright e2e 체크포인트에서 재확인 예정.
 
 - **담당 판정 기준**: S1-4, S5
 - **크기**: M
