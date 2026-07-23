@@ -93,5 +93,5 @@ export function MapView({ appKey, currentLocation, stations, selectedId }: MapVi
     map.setBounds(bounds);
   }, [isMapReady, stations, currentLocation, selectedId]);
 
-  return <div ref={containerRef} className="size-full" />;
+  return <div ref={containerRef} role="img" aria-label="주변 주유소 위치 지도" className="size-full" />;
 }

@@ -35,31 +35,25 @@ export function StationList({
           <li key={station.id}>
             <Card
               size="sm"
-              role="button"
-              tabIndex={0}
-              aria-pressed={isSelected}
-              onClick={() => onSelect?.(station.id)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onSelect?.(station.id);
-                }
-              }}
-              className={cn(
-                "flex-row items-center gap-3 cursor-pointer",
-                isSelected && "ring-2 ring-primary",
-              )}
+              className={cn("flex-row items-center gap-3", isSelected && "ring-2 ring-primary")}
             >
               <CardContent className="flex flex-1 items-center gap-3">
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                  {index + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold">{station.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {station.brandLabel} · {formatDistance(station.distance)}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => onSelect?.(station.id)}
+                  className="flex flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    {index + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold">{station.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {station.brandLabel} · {formatDistance(station.distance)}
+                    </p>
+                  </div>
+                </button>
                 <div className="shrink-0 text-right">
                   <div className="text-sm font-bold">{formatPrice(station.price)}</div>
                   <Button
@@ -67,12 +61,9 @@ export function StationList({
                     variant="outline"
                     size="sm"
                     className="mt-1"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      window.open(buildKakaoRouteUrl(currentLocation, station), "_blank");
-                    }}
+                    onClick={() => window.open(buildKakaoRouteUrl(currentLocation, station), "_blank")}
                   >
-                    <NavigationIcon data-icon="inline-start" />
+                    <NavigationIcon data-icon="inline-start" aria-hidden="true" />
                     길찾기
                   </Button>
                 </div>

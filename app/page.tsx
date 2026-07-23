@@ -58,11 +58,11 @@ export default function Page() {
           </div>
         </>
       )}
-      <div className="mt-4">
+      <div className="mt-4" aria-live="polite">
         {isLoading && (
           <div className="flex flex-col items-center justify-center gap-3 py-24">
-            <Loader2Icon className="size-8 animate-spin" />
-            <span className="text-sm">근처 주유소를 찾는 중...</span>
+            <Loader2Icon className="size-8 animate-spin" aria-hidden="true" />
+            <span className="text-sm">근처 주유소를 찾는 중…</span>
           </div>
         )}
 

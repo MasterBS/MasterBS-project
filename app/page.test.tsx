@@ -31,7 +31,7 @@ describe("Page [S1-1][S2]", () => {
 
     render(<Page />);
 
-    expect(screen.getByText("근처 주유소를 찾는 중...")).toBeInTheDocument();
+    expect(screen.getByText("근처 주유소를 찾는 중…")).toBeInTheDocument();
   });
 
   it("[S1-1] keeps showing the loading text while stations are fetched after coords resolve", () => {
@@ -44,7 +44,7 @@ describe("Page [S1-1][S2]", () => {
 
     render(<Page />);
 
-    expect(screen.getByText("근처 주유소를 찾는 중...")).toBeInTheDocument();
+    expect(screen.getByText("근처 주유소를 찾는 중…")).toBeInTheDocument();
   });
 
   it("[S2] passes the newly selected fuel to useStations when the fuel toggle changes", async () => {
