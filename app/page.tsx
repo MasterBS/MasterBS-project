@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Loader2Icon } from "lucide-react";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useStations } from "@/hooks/use-stations";
@@ -8,8 +9,15 @@ import { FuelToggle } from "@/components/gas/fuel-toggle";
 import { StationList } from "@/components/gas/station-list";
 import type { FuelType } from "@/types/station";
 
+const MapView = dynamic(() => import("@/components/gas/map-view").then((m) => m.MapView), {
+  ssr: false,
+});
+
+const KAKAO_MAP_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY ?? "";
+
 export default function Page() {
   const [fuel, setFuel] = useState<FuelType>("gasoline");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const geolocation = useGeolocation();
   const stations = useStations({
     lat: geolocation.coords?.lat ?? null,
@@ -23,7 +31,7 @@ export default function Page() {
     (geolocation.status === "success" && stations.status !== "success" && stations.status !== "error");
 
   return (
-    <main className="mx-auto max-w-2xl p-4">
+    <main className="mx-auto max-w-6xl p-4">
       <h1 className="mb-4 text-lg font-bold">내 주변 저가 주유소 TOP5</h1>
       <FuelToggle value={fuel} onChange={setFuel} />
       <div className="mt-4">
@@ -33,7 +41,27 @@ export default function Page() {
             <span className="text-sm">근처 주유소를 찾는 중...</span>
           </div>
         )}
-        {stations.status === "success" && <StationList stations={stations.stations} />}
+        {stations.status === "success" && geolocation.status === "success" && (
+          <div className="flex flex-col gap-4 md:flex-row">
+            <div className="md:order-2 md:w-1/2">
+              <div className="h-56 md:sticky md:top-4 md:h-[520px]">
+                <MapView
+                  appKey={KAKAO_MAP_APP_KEY}
+                  currentLocation={geolocation.coords}
+                  stations={stations.stations}
+                  selectedId={selectedId}
+                />
+              </div>
+            </div>
+            <div className="md:order-1 md:w-1/2">
+              <StationList
+                stations={stations.stations}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

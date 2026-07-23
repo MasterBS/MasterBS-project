@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { StationList } from "./station-list";
 import type { Station } from "@/types/station";
 
@@ -48,5 +49,31 @@ describe("StationList [S1-2]", () => {
   it("[S1-2] renders fewer than 5 items when fewer stations are given", () => {
     render(<StationList stations={[makeStation()]} />);
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("[S5] calls onSelect with the station id when an item is clicked", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    const stations = [makeStation({ id: "1" }), makeStation({ id: "2", name: "다른주유소" })];
+
+    render(<StationList stations={stations} onSelect={onSelect} />);
+    await user.click(screen.getByText("다른주유소"));
+
+    expect(onSelect).toHaveBeenCalledWith("2");
+  });
+
+  it("[S5] marks the station matching selectedId as pressed/selected", () => {
+    const stations = [makeStation({ id: "1" }), makeStation({ id: "2", name: "다른주유소" })];
+
+    render(<StationList stations={stations} selectedId="2" />);
+
+    expect(screen.getByText("다른주유소").closest('[aria-pressed]')).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByText("테스트주유소").closest('[aria-pressed]')).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 });

@@ -11,6 +11,11 @@ vi.mock("@/hooks/use-geolocation", () => ({
 vi.mock("@/hooks/use-stations", () => ({
   useStations: (...args: unknown[]) => useStationsMock(...args),
 }));
+vi.mock("@/components/gas/map-view", () => ({
+  MapView: (props: { selectedId?: string | null }) => (
+    <div data-testid="map-view-mock" data-selected-id={props.selectedId ?? ""} />
+  ),
+}));
 
 const { default: Page } = await import("./page");
 
@@ -58,5 +63,50 @@ describe("Page [S1-1][S2]", () => {
     await user.click(screen.getByRole("radio", { name: "경유" }));
 
     expect(useStationsMock).toHaveBeenLastCalledWith(expect.objectContaining({ fuel: "diesel" }));
+  });
+
+  it("[S5] shares selection state: clicking a station in the list updates the map's selectedId", async () => {
+    const user = userEvent.setup();
+    useGeolocationMock.mockReturnValue({
+      status: "success",
+      coords: { lat: 37.56, lng: 127.0 },
+      retry: vi.fn(),
+    });
+    useStationsMock.mockReturnValue({
+      status: "success",
+      stations: [
+        {
+          id: "1",
+          name: "1위주유소",
+          brandCode: "SKE",
+          brandLabel: "SK에너지",
+          price: 1800,
+          distance: 500,
+          lat: 37.56,
+          lng: 127.0,
+          isSelfEstimated: false,
+        },
+        {
+          id: "2",
+          name: "2위주유소",
+          brandCode: "GSC",
+          brandLabel: "GS칼텍스",
+          price: 1810,
+          distance: 600,
+          lat: 37.57,
+          lng: 127.01,
+          isSelfEstimated: false,
+        },
+      ],
+      error: null,
+    });
+
+    render(<Page />);
+
+    expect(screen.getByTestId("map-view-mock")).toHaveAttribute("data-selected-id", "");
+
+    await user.click(screen.getByText("2위주유소"));
+
+    expect(screen.getByTestId("map-view-mock")).toHaveAttribute("data-selected-id", "2");
   });
 });
