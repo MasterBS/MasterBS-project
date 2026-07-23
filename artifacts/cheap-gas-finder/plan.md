@@ -235,11 +235,11 @@
 
 ---
 
-### 최종 Checkpoint
-- [ ] `e2e/cheap-gas-finder.spec.ts` 작성·실행: Playwright `grantPermissions(['geolocation'])` + `setGeolocation`, `/api/stations`는 고정 응답으로 stub. spec.md **End-to-end 검증** 1~8 절차 자동화 (S9·S7은 stub 응답 변형으로 재현)
-- [ ] `bun run test:e2e` 통과
-- [ ] web-design-guidelines로 `components/gas/*`, `app/page.tsx` 접근성·UX 검토
-- [ ] spec.md의 End-to-end 검증 절차를 실행하고, 통과한 판정 기준 체크박스를 spec.md에서 켠다 (실행 증거로만)
+### 최종 Checkpoint — ✅ 통과 (S5 e2e·S10 실기기 설치만 예외)
+- [x] `e2e/cheap-gas-finder.spec.ts` 작성·실행: Playwright `grantPermissions(['geolocation'])` + `setGeolocation`, `/api/stations`는 `page.route`로 stub. S1~S4, S6~S9, INV-1 자동화 확인(9/10 통과). S5(지도 핀 강조)는 `test.fixme()` — 실 카카오맵 SDK가 `http://localhost:3000`을 sub-resource로 로드할 때 401(Referer 기반 도메인 미등록으로 추정, curl로 재현). Kakao Developers 콘솔 "플랫폼 > Web"에 도메인 등록 후 재활성화 필요
+- [x] `bun run test:e2e` 통과 (9 passed, 1 fixme)
+- [x] web-design-guidelines로 `components/gas/*`, `app/page.tsx` 접근성·UX 검토 — 8개 findings 발견, 전부 직접 수정(commit b61b50e): div-as-button + 중첩 인터랙티브 컨트롤(station-list), 키보드 포커스 표시 없음, 장식 아이콘 aria-hidden 누락, 상태 영역 aria-live 없음, "..." → "…", 지도 컨테이너 접근성 이름 없음
+- [x] spec.md의 End-to-end 검증 절차 실행: 단계 1~7·9는 Playwright e2e로 자동 확인, 단계 10(INV-1)은 각 시나리오의 개수 단언으로 확인. 단계 8(PWA 홈 화면 설치)만 실기기가 필요해 Human review로 남김
 
 ## 미결정 항목
 

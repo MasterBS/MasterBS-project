@@ -54,6 +54,8 @@ date: 2026-07-23
 
 **후속(같은 날)**: 사용자가 Kakao Developers 콘솔에서 카카오맵 제품을 활성화한 뒤, 같은 URL이 정상 SDK 응답을 반환함을 재확인했다. 이어서 실 API 키 + Task 2 체크포인트의 실 좌표(`evidence/checkpoint-1.json`)로 브라우저에서 직접 마커·bounds 렌더링을 확인해 S1-4·S5를 증명했다. 증거: `evidence/task-4-map-render.md`.
 
+**정정(최종 체크포인트, 같은 날)**: 이 "성공" 확인은 매번 **top-level navigate 또는 이미 로드된 페이지에 직접 스크립트 주입**으로 했다. 최종 체크포인트에서 Playwright e2e로 실제 앱 흐름(페이지의 `<script src>` sub-resource 로드)을 재현하자 SDK가 다시 실패했다 — 원인은 별개의 도메인 허용 목록 문제였다. `[미해결 항목]` 아래 새 항목 참고.
+
 ---
 
 ## 이 sandbox Browser MCP 창에서는 geolocation이 항상 "denied"다 — happy path는 못 보지만 거부 상태 UI는 실제로 검증된다
@@ -85,3 +87,33 @@ date: 2026-07-23
 **에피소드**: Task 8에서 `public/icons/icon-192.png`·`icon-512.png`가 필요했다. `sharp`/`convert`/`magick`/PIL을 차례로 확인했으나 전부 사용 불가였다. `/private/tmp/.../generate-pwa-icons.mjs`에 최소 PNG 인코더(CRC32 테이블 + IHDR/IDAT/IEND 청크 조립)를 작성해 짙은 회색 배경 + 흰 원 아이콘을 두 크기로 생성했고, `file`·`sips -g pixelWidth`로 유효성과 치수를 확인했다.
 
 **증거**: commit 7745ed4, `public/icons/icon-192.png`(1210 bytes, PNG 192x192 RGBA)·`icon-512.png`(6486 bytes, PNG 512x512 RGBA) — `file`/`sips` 출력으로 검증
+
+---
+
+## 카카오맵 SDK를 `<script src>` sub-resource로 로드하면 401 — localhost가 허용 Web 플랫폼 도메인이 아니다
+
+**지시문(hypothesis — 사용자 콘솔 설정 후 verified로 확정 필요)**: `curl -H "Referer: http://localhost:3000/" https://dapi.kakao.com/v2/maps/sdk.js?appkey=...`는 401(JSON 에러 바디)을 반환하지만, Referer 없이 호출하거나 그 URL로 직접 navigate하면 200(JS)을 반환한다. 실제 앱이 `<script>` 태그로 SDK를 로드할 때 브라우저가 자동으로 `Referer: http://localhost:3000/`를 붙이므로, 앱의 진짜 사용 방식(sub-resource 로드)에서는 항상 401 → Chromium이 `net::ERR_BLOCKED_BY_ORB`로 표면화한다. Kakao Developers 콘솔 → 해당 앱 → "플랫폼 > Web"에 `http://localhost:3000`(로컬 개발용)과 배포 도메인을 등록해야 한다 — Task 4에서 확인한 "카카오맵 제품 활성화"와는 **별개의 설정**이다.
+
+**에피소드**: 최종 체크포인트의 Playwright e2e에서 S5(지도 핀 강조)를 실 SDK로 검증하려다 실패했다. 격리된 `chromium.launch()` 스크립트로 재현: `page.route` 없이도, `--disable-features=OpaqueResponseBlocking*` 플래그를 줘도 실패가 그대로였다. `curl`로 Referer 유무에 따른 응답 차이(200 vs 401)를 직접 비교해 원인을 좁혔다. 이어서 Claude Browser MCP 샌드박스에서도 **같은 스크립트 주입 기법**(Task 4 때는 성공했던 바로 그 방법)으로 재현하니 이번엔 실패했다 — Task 4 이후 Kakao 쪽 설정(또는 도메인 허용 목록의 기본 동작)이 바뀐 것으로 보인다. Task 4의 "S1-4·S5 증명됨" 결론은 이 시점 기준 최신이 아니다.
+
+**증거**: 2026-07-23, `curl -D -` 응답 비교(Referer 없음 200 / `Referer: http://localhost:3000/` 있음 401), Playwright `page.on("response")`로 확인한 실제 요청 헤더(`referer: http://localhost:3000/`), `e2e/cheap-gas-finder.spec.ts`의 `test.fixme("[S5] ...")`. 도메인 등록 후 `test.fixme`를 풀고 재확인할 것.
+
+---
+
+## PWA service worker가 Playwright의 `page.route()` 목킹을 조용히 무력화한다
+
+**지시문**: `clients.claim()`을 쓰는 service worker(`public/sw.js`처럼 activate 시 즉시 페이지를 장악하는 SW)가 등록된 앱을 Playwright로 테스트할 때는, `playwright.config.ts`의 `use`에 `serviceWorkers: "block"`을 반드시 넣는다. SW가 페이지를 장악한 뒤에는 `fetch` 이벤트 핸들러가 자체적으로 요청을 재발행하며, 이 요청은 `page.route()`가 관찰하는 페이지 네트워크 레이어를 우회한다 — 목이 조용히 무시되고 실 네트워크(실 API)가 호출된다.
+
+**에피소드**: `e2e/cheap-gas-finder.spec.ts`의 여러 테스트가 `/api/stations`를 스텁했는데도 Task 2 체크포인트에서 봤던 것과 완전히 동일한 실제 오피넷 응답(이케이에너지㈜ 강산주유소 등)이 렌더링됐다. 에러도 없어서 처음엔 route 패턴이 틀렸다고 의심했지만, 실행이 빠른 테스트([S7])는 통과하고 느린 테스트는 실패하는 패턴을 보고 타이밍 이슈(SW가 활성화되기 전엔 목이 먹히고, 활성화된 후엔 안 먹힘)임을 좁혔다. `serviceWorkers: "block"` 한 줄로 즉시 해결됐다.
+
+**증거**: commit f97273b, `playwright.config.ts`의 `use.serviceWorkers: "block"` — 추가 전 8개 테스트 실패, 추가 후 전부(S5 제외) 통과
+
+---
+
+## Playwright `getByRole("button", {name})`는 부분 문자열 매칭이라 중첩된 role="button"의 접근성 이름에 걸릴 수 있다
+
+**지시문**: 바깥 요소가 `role="button"`이고 그 안에 실제 `<button>`이 중첩되어 있으면(중첩 자체가 anti-pattern이지만 리팩터 전 임시로라도 존재한다면), `getByRole("button", { name: "..." })`를 `exact: true` 없이 쓰면 바깥 요소가 먼저 매칭될 수 있다 — 바깥 요소의 접근성 이름은 모든 자손 텍스트를 이어붙인 문자열이라 안쪽 버튼의 라벨을 부분 문자열로 포함하기 때문이다. `.first()`는 DOM 순서상 항상 바깥(부모) 요소를 반환한다.
+
+**에피소드**: `e2e/cheap-gas-finder.spec.ts`의 [S6] 테스트가 `context.waitForEvent("page")`에서 30초 타임아웃했다. `page.getByRole("button", { name: "길찾기" }).first()`가 실제로는 리스트 항목 전체(선택용 outer Card, 접근성 이름이 "1 서울에너지 직영 S-OIL · 4.9km 1,830원 길찾기")를 클릭하고 있었다 — 선택만 되고 새 탭은 절대 열리지 않았다. `exact: true`로 바꿔 안쪽 실제 "길찾기" 버튼만 매칭하도록 고쳤다. 이 발견은 `station-list.tsx`의 div-as-button 중첩 구조 리팩터(같은 체크포인트)의 계기가 되기도 했다.
+
+**증거**: commit f97273b(exact:true 수정), commit b61b50e(station-list.tsx 구조 리팩터로 중첩 자체 제거) — `e2e/cheap-gas-finder.spec.ts`의 `[S6]` 테스트
