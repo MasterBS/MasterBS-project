@@ -157,11 +157,12 @@
 
 ---
 
-### Checkpoint: Tasks 3~4 이후
-- [ ] 모든 테스트 통과: `bun run test`
-- [ ] 빌드 성공: `bun run build`
-- [ ] 커버리지 검사: `scripts/spec-coverage.sh cheap-gas-finder --tests`
-- [ ] 실 브라우저에서 위치 허용 → 리스트 + 지도(현재 위치·핀·자동줌)가 end-to-end 동작
+### Checkpoint: Tasks 3~4 이후 — ✅ 통과 (위치 허용 흐름은 최종 e2e로 이월)
+- [x] 모든 테스트 통과: `bun run test` (27 passed)
+- [x] 빌드 성공: `bun run build`
+- [x] 커버리지 검사: `scripts/spec-coverage.sh cheap-gas-finder --tests` (S1-1~S1-4, S2, S5 인용 확인)
+- [x] 지도·마커·자동줌: 실 Kakao SDK + 실 좌표로 직접 확인(`evidence/task-4-map-render.md`). 리스트-지도 selected 상태 공유는 `app/page.test.tsx`([S5])로 확인
+- [ ] (이월) 브라우저에서 위치 허용 클릭 → 전체 end-to-end: 샌드박스가 geolocation을 항상 거부해 이 세션에서는 불가 (`learnings.md` 참고). 최종 Playwright e2e 체크포인트(`grantPermissions(['geolocation'])`)에서 재확인 예정
 
 ---
 
