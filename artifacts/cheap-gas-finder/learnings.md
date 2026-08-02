@@ -13,6 +13,11 @@ date: 2026-07-23
 **증거**: commit 4aa9d2c, `config/opinet.ts`의 `FUEL_PRODCD_MAP.lpg`
 
 ---
+triggers: [vitest, fetch mock, "Body is unusable", mockResolvedValue, Response 재사용, 반경 확장 루프]
+status: verified
+scope: this-repo (vitest, fetch mock 패턴)
+date: 2026-07-23
+---
 
 ## vitest에서 fetch mock에 같은 Response 인스턴스를 재사용하면 "Body is unusable" 에러가 난다
 
@@ -22,6 +27,11 @@ date: 2026-07-23
 
 **증거**: commit 4aa9d2c, `services/stations.test.ts`의 `[S7-1]`·`[stations] filters by brand...`·`[stations] builds request URL...` 테스트
 
+---
+triggers: [shadcn, ToggleGroup, ToggleGroupItem, "role=\"radio\"", getByRole button 실패, roving radiogroup]
+status: verified
+scope: this-repo (shadcn radix-nova style)
+date: 2026-07-23
 ---
 
 ## shadcn ToggleGroup(type="single")의 item은 role="radio"다, role="button" 아님
@@ -33,6 +43,11 @@ date: 2026-07-23
 **증거**: commit 93d5c45, `app/page.test.tsx`의 `[S2] passes the newly selected fuel...` 테스트
 
 ---
+triggers: [shadcn, Badge, 순위 배지, 원형 인디케이터, rounded-full, shadcn-guard, className 덮어쓰기]
+status: verified
+scope: this-repo (shadcn-guard.md 규칙 적용 시)
+date: 2026-07-23
+---
 
 ## shadcn Badge를 순위 원형 배지로 재사용하지 않는다
 
@@ -42,6 +57,11 @@ date: 2026-07-23
 
 **증거**: commit 93d5c45, `components/gas/station-list.tsx`
 
+---
+triggers: [카카오맵, kakao maps, NotAuthorizedError, OPEN_MAP_AND_LOCAL, disabled service, Kakao Developers 콘솔, dapi.kakao.com]
+status: verified
+scope: this-repo (Kakao Maps JS SDK)
+date: 2026-07-23
 ---
 
 ## 카카오맵 JS 키가 "NotAuthorizedError: disabled OPEN_MAP_AND_LOCAL service"로 막혀 있다
@@ -57,6 +77,11 @@ date: 2026-07-23
 **정정(최종 체크포인트, 같은 날)**: 이 "성공" 확인은 매번 **top-level navigate 또는 이미 로드된 페이지에 직접 스크립트 주입**으로 했다. 최종 체크포인트에서 Playwright e2e로 실제 앱 흐름(페이지의 `<script src>` sub-resource 로드)을 재현하자 SDK가 다시 실패했다 — 원인은 별개의 도메인 허용 목록 문제였다. `[미해결 항목]` 아래 새 항목 참고.
 
 ---
+triggers: [Browser MCP, geolocation denied, "navigator.permissions.query", beforeinstallprompt, sandbox 제약, 위치 권한 허용 검증 불가]
+status: verified
+scope: this-repo (Claude Browser MCP sandbox)
+date: 2026-07-23
+---
 
 ## 이 sandbox Browser MCP 창에서는 geolocation이 항상 "denied"다 — happy path는 못 보지만 거부 상태 UI는 실제로 검증된다
 
@@ -66,8 +91,15 @@ date: 2026-07-23
 
 **증거**: 2026-07-23, Task 7 세션. `navigator.permissions.query({name:'geolocation'}).then(r => r.state)` → `"denied"`; `bun run dev` 페이지 스크린샷에서 S8 UI 확인.
 
+**재발(map-provider-selection, 2026-08-02)**: 완전히 다른 feature 세션에서도 동일하게 재현됐다 — 설정 시트 전환 UI를 Browser MCP로 검증할 때 geolocation이 계속 거부 상태였고, S1/S3/S4(provider 전환·기본값·새로고침 지속성)는 결국 Playwright e2e(`context.grantPermissions`)와 사용자에게 부탁한 실 브라우저 확인으로 대체했다. S6(설정 진입점, geolocation 무관)만 Browser MCP로 직접 스크린샷 확인했다.
+
 **재발(Task 8)**: `beforeinstallprompt`도 같은 패턴이었다 — 리스너를 붙이고 재로드해도 캡처되지 않았다. geolocation 거부·이전 Kakao 스크립트 인젝션 실패까지 합쳐 이 sandbox Browser MCP는 **사용자 참여 휴리스틱에 의존하는 브라우저 이벤트/프롬프트(permission prompt, `beforeinstallprompt` 등)를 기술 조건 충족 여부와 무관하게 억제**하는 것으로 보인다. 이런 이벤트가 필요한 검증은 처음부터 시도하지 말고, 이벤트를 유발하는 근본 조건(manifest 내용, SW 등록 상태, 응답 코드 등)을 `fetch`/JS로 직접 확인하는 쪽으로 바로 넘어간다.
 
+---
+triggers: [next/dynamic, "ssr: false", findByTestId, 첫 렌더 테스트, dynamic import 타이밍, "Unable to find element"]
+status: verified
+scope: this-repo (Next.js 16 + Vitest + @testing-library/react)
+date: 2026-07-23
 ---
 
 ## next/dynamic(ssr:false) 컴포넌트는 테스트 파일 안에서 "처음 마운트되는 테스트"에서만 비동기로 나타난다
@@ -79,6 +111,11 @@ date: 2026-07-23
 **증거**: commit 4dd5feb, `app/page.test.tsx`의 `[S5] shares selection state...` 테스트
 
 ---
+triggers: [PNG 인코딩, sharp 없음, ImageMagick 없음, PIL 없음, PWA 아이콘, "node:zlib", CRC32, IHDR IDAT IEND]
+status: verified
+scope: this-repo (이 개발 머신 — sharp 네이티브 바인딩 미설치, ImageMagick/PIL 없음)
+date: 2026-07-23
+---
 
 ## sharp/ImageMagick/PIL 없이 PNG 아이콘이 필요하면 순수 Node `zlib`로 직접 인코딩한다
 
@@ -88,6 +125,11 @@ date: 2026-07-23
 
 **증거**: commit 7745ed4, `public/icons/icon-192.png`(1210 bytes, PNG 192x192 RGBA)·`icon-512.png`(6486 bytes, PNG 512x512 RGBA) — `file`/`sips` 출력으로 검증
 
+---
+triggers: [카카오맵, dapi.kakao.com, 401, ERR_BLOCKED_BY_ORB, Referer, "플랫폼 > Web", 도메인 등록, sub-resource 로드 실패]
+status: hypothesis
+scope: this-repo (Kakao Maps SDK, localhost 도메인 등록 — 사용자 콘솔 설정 후 verified로 확정 필요)
+date: 2026-07-23
 ---
 
 ## 카카오맵 SDK를 `<script src>` sub-resource로 로드하면 401 — localhost가 허용 Web 플랫폼 도메인이 아니다
@@ -99,6 +141,11 @@ date: 2026-07-23
 **증거**: 2026-07-23, `curl -D -` 응답 비교(Referer 없음 200 / `Referer: http://localhost:3000/` 있음 401), Playwright `page.on("response")`로 확인한 실제 요청 헤더(`referer: http://localhost:3000/`), `e2e/cheap-gas-finder.spec.ts`의 `test.fixme("[S5] ...")`. 도메인 등록 후 `test.fixme`를 풀고 재확인할 것.
 
 ---
+triggers: [Playwright, page.route, service worker, "clients.claim", "serviceWorkers: \"block\"", 목킹 무력화, PWA]
+status: verified
+scope: this-repo (Playwright + clients.claim()을 쓰는 PWA service worker)
+date: 2026-07-23
+---
 
 ## PWA service worker가 Playwright의 `page.route()` 목킹을 조용히 무력화한다
 
@@ -108,6 +155,11 @@ date: 2026-07-23
 
 **증거**: commit f97273b, `playwright.config.ts`의 `use.serviceWorkers: "block"` — 추가 전 8개 테스트 실패, 추가 후 전부(S5 제외) 통과
 
+---
+triggers: [Playwright, getByRole button, "exact: true", 중첩 role=button, 접근성 이름 부분 문자열, waitForEvent page 타임아웃]
+status: verified
+scope: this-repo (Playwright, 중첩된 interactive 요소가 있는 DOM)
+date: 2026-07-23
 ---
 
 ## Playwright `getByRole("button", {name})`는 부분 문자열 매칭이라 중첩된 role="button"의 접근성 이름에 걸릴 수 있다
