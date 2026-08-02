@@ -12,8 +12,12 @@ vi.mock("@/hooks/use-stations", () => ({
   useStations: (...args: unknown[]) => useStationsMock(...args),
 }));
 vi.mock("@/components/gas/map-view", () => ({
-  MapView: (props: { selectedId?: string | null }) => (
-    <div data-testid="map-view-mock" data-selected-id={props.selectedId ?? ""} />
+  MapView: (props: { selectedId?: string | null; provider?: string }) => (
+    <div
+      data-testid="map-view-mock"
+      data-selected-id={props.selectedId ?? ""}
+      data-provider={props.provider ?? ""}
+    />
   ),
 }));
 
@@ -23,6 +27,7 @@ describe("Page [S1-1][S2]", () => {
   beforeEach(() => {
     useGeolocationMock.mockReset();
     useStationsMock.mockReset();
+    window.localStorage.clear();
   });
 
   it("[S1-1] shows a loading spinner and 근처 주유소를 찾는 중... while geolocation resolves", () => {
@@ -234,5 +239,52 @@ describe("Page [S1-1][S2]", () => {
 
     expect(screen.getByText("10km 내 1곳만 찾았어요")).toBeInTheDocument();
     expect(screen.getByText("1위주유소")).toBeInTheDocument();
+  });
+
+  it("[map-provider-selection S6] always shows the settings entry point, even when location is denied", () => {
+    useGeolocationMock.mockReturnValue({ status: "denied", coords: null, retry: vi.fn() });
+    useStationsMock.mockReturnValue({ status: "idle", stations: [], error: null });
+
+    render(<Page />);
+
+    expect(screen.getByRole("button", { name: "설정" })).toBeInTheDocument();
+  });
+
+  it("[map-provider-selection S1-1] switching provider in settings replaces the map immediately, without refetching stations", async () => {
+    const user = userEvent.setup();
+    useGeolocationMock.mockReturnValue({
+      status: "success",
+      coords: { lat: 37.56, lng: 127.0 },
+      retry: vi.fn(),
+    });
+    useStationsMock.mockReturnValue({
+      status: "success",
+      stations: [
+        {
+          id: "1",
+          name: "1위주유소",
+          brandCode: "SKE",
+          brandLabel: "SK에너지",
+          price: 1800,
+          distance: 500,
+          lat: 37.56,
+          lng: 127.0,
+          isSelfEstimated: false,
+        },
+      ],
+      error: null,
+    });
+
+    render(<Page />);
+
+    expect(await screen.findByTestId("map-view-mock")).toHaveAttribute("data-provider", "naver");
+
+    await user.click(screen.getByRole("button", { name: "설정" }));
+    await user.click(await screen.findByRole("radio", { name: "카카오맵" }));
+
+    expect(screen.getByTestId("map-view-mock")).toHaveAttribute("data-provider", "kakao");
+    expect(useStationsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ lat: 37.56, lng: 127.0 }),
+    );
   });
 });

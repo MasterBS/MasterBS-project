@@ -4,10 +4,12 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Loader2Icon } from "lucide-react";
 import { useGeolocation } from "@/hooks/use-geolocation";
+import { useMapProvider } from "@/hooks/use-map-provider";
 import { useStations } from "@/hooks/use-stations";
 import { BRAND_KEYS, MIN_RESULT_COUNT } from "@/config/opinet";
 import { FuelToggle } from "@/components/gas/fuel-toggle";
 import { Filters } from "@/components/gas/filters";
+import { SettingsSheet } from "@/components/gas/settings-sheet";
 import { StationList } from "@/components/gas/station-list";
 import {
   ApiErrorMessage,
@@ -29,6 +31,7 @@ export default function Page() {
   const [brands, setBrands] = useState<BrandKey[]>(BRAND_KEYS);
   const [selfOnly, setSelfOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { provider, setProvider } = useMapProvider();
   const geolocation = useGeolocation();
   const stations = useStations({
     lat: geolocation.coords?.lat ?? null,
@@ -45,7 +48,10 @@ export default function Page() {
 
   return (
     <main className="mx-auto max-w-6xl p-4">
-      <h1 className="mb-4 text-lg font-bold">내 주변 저가 주유소 TOP5</h1>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h1 className="text-lg font-bold">내 주변 저가 주유소 TOP5</h1>
+        <SettingsSheet provider={provider} onProviderChange={setProvider} />
+      </div>
       {geolocation.status === "success" && (
         <>
           <FuelToggle value={fuel} onChange={setFuel} />
@@ -88,7 +94,7 @@ export default function Page() {
                 <div className="md:order-2 md:w-1/2">
                   <div className="h-56 md:sticky md:top-4 md:h-[520px]">
                     <MapView
-                      provider="kakao"
+                      provider={provider}
                       kakaoAppKey={KAKAO_MAP_APP_KEY}
                       naverClientId={NAVER_MAP_CLIENT_ID}
                       currentLocation={geolocation.coords}
@@ -103,7 +109,7 @@ export default function Page() {
                     selectedId={selectedId}
                     onSelect={setSelectedId}
                     currentLocation={geolocation.coords}
-                    provider="kakao"
+                    provider={provider}
                   />
                 </div>
               </div>
