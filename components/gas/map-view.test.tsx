@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { useEffect } from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MapView } from "./map-view";
 import type { Station } from "@/types/station";
 
@@ -111,5 +113,61 @@ describe("MapView [S1-2][INV-1]", () => {
 
     expect(naverCallProps?.currentLocation).toEqual(kakaoCallProps?.currentLocation);
     expect(naverCallProps?.stations).toEqual(kakaoCallProps?.stations);
+  });
+});
+
+function FailingProvider({ onError }: { onError?: () => void }) {
+  useEffect(() => {
+    onError?.();
+  }, [onError]);
+  return <div data-testid="failing-provider-mock" />;
+}
+
+describe("MapView [S5-1][S5-2]", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("[S5-1] shows an error message and retry button when the SDK fails to load", async () => {
+    vi.mocked(KakaoMapView).mockImplementation(FailingProvider as never);
+
+    render(
+      <MapView
+        provider="kakao"
+        kakaoAppKey="kakao-key"
+        naverClientId="naver-key"
+        currentLocation={{ lat: 37.56, lng: 127.0 }}
+        stations={[]}
+      />,
+    );
+
+    expect(
+      await screen.findByText("지도를 불러오지 못했어요. 다시 시도해주세요"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+  });
+
+  it("[S5-2] does not switch provider automatically; retry re-attempts the same provider", async () => {
+    const user = userEvent.setup();
+    vi.mocked(KakaoMapView).mockImplementation(FailingProvider as never);
+
+    render(
+      <MapView
+        provider="kakao"
+        kakaoAppKey="kakao-key"
+        naverClientId="naver-key"
+        currentLocation={{ lat: 37.56, lng: 127.0 }}
+        stations={[]}
+      />,
+    );
+
+    await screen.findByText("지도를 불러오지 못했어요. 다시 시도해주세요");
+    expect(NaverMapView).not.toHaveBeenCalled();
+    expect(KakaoMapView).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: "다시 시도" }));
+
+    await waitFor(() => expect(KakaoMapView).toHaveBeenCalledTimes(2));
+    expect(NaverMapView).not.toHaveBeenCalled();
   });
 });
