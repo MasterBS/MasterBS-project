@@ -22,6 +22,7 @@ const MapView = dynamic(() => import("@/components/gas/map-view").then((m) => m.
 });
 
 const KAKAO_MAP_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY ?? "";
+const NAVER_MAP_CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ?? "";
 
 export default function Page() {
   const [fuel, setFuel] = useState<FuelType>("gasoline");
@@ -87,7 +88,9 @@ export default function Page() {
                 <div className="md:order-2 md:w-1/2">
                   <div className="h-56 md:sticky md:top-4 md:h-[520px]">
                     <MapView
-                      appKey={KAKAO_MAP_APP_KEY}
+                      provider="kakao"
+                      kakaoAppKey={KAKAO_MAP_APP_KEY}
+                      naverClientId={NAVER_MAP_CLIENT_ID}
                       currentLocation={geolocation.coords}
                       stations={stations.stations}
                       selectedId={selectedId}
