@@ -1,7 +1,7 @@
 import { NavigationIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { buildRouteUrl, type LatLng } from "@/lib/directions";
+import { openRoute, type LatLng } from "@/lib/directions";
 import { cn } from "@/lib/utils";
 import type { MapProvider } from "@/types/map-provider";
 import type { Station } from "@/types/station";
@@ -64,12 +64,7 @@ export function StationList({
                     variant="outline"
                     size="sm"
                     className="mt-1"
-                    onClick={() =>
-                      window.open(
-                        buildRouteUrl(provider, currentLocation, station, station.name),
-                        "_blank",
-                      )
-                    }
+                    onClick={() => openRoute(provider, currentLocation, station, station.name)}
                   >
                     <NavigationIcon data-icon="inline-start" aria-hidden="true" />
                     길찾기

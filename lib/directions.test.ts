@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { buildKakaoRouteUrl, buildNaverRouteUrl, buildRouteUrl } from "./directions";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  buildKakaoRouteUrl,
+  buildNaverRouteUrl,
+  buildNaverWebFallbackUrl,
+  buildRouteUrl,
+  openRoute,
+} from "./directions";
 
 describe("buildKakaoRouteUrl [S6]", () => {
   it("[S6] builds a kakao map route URL with sp/ep/by query params from WGS84 coordinates", () => {
@@ -46,5 +52,77 @@ describe("buildRouteUrl [S2]", () => {
   it("[S2] dispatches to the naver builder when provider is naver", () => {
     const url = buildRouteUrl("naver", origin, dest, "테스트주유소");
     expect(url).toBe(buildNaverRouteUrl(origin, dest, "테스트주유소"));
+  });
+});
+
+describe("buildNaverWebFallbackUrl", () => {
+  it("builds a map.naver.com/p/directions web URL with lng,lat,name path segments", () => {
+    const origin = { lat: 37.5587543, lng: 127.0008881 };
+    const dest = { lat: 37.6, lng: 127.1 };
+
+    const url = buildNaverWebFallbackUrl(origin, dest, "테스트주유소");
+    const parsed = new URL(url);
+
+    expect(parsed.origin + parsed.pathname).toBe(
+      `https://map.naver.com/p/directions/127.0008881,37.5587543,${encodeURIComponent("현재 위치")},/127.1,37.6,${encodeURIComponent("테스트주유소")},/-/car`,
+    );
+  });
+});
+
+describe("openRoute [네이버지도 길찾기 앱 딥링크 폴백]", () => {
+  const origin = { lat: 37.5587543, lng: 127.0008881 };
+  const dest = { lat: 37.6, lng: 127.1 };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("kakao: opens the kakao route URL once and schedules no fallback", () => {
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+
+    openRoute("kakao", origin, dest, "테스트주유소");
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledWith(buildKakaoRouteUrl(origin, dest), "_blank");
+    vi.advanceTimersByTime(5000);
+    expect(openSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("naver: opens the nmap:// deep link immediately, then redirects the same tab to the web fallback if it's still open", () => {
+    const popup = { closed: false, location: { href: "" } } as unknown as Window;
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(popup);
+
+    openRoute("naver", origin, dest, "테스트주유소");
+
+    expect(openSpy).toHaveBeenCalledWith(buildNaverRouteUrl(origin, dest, "테스트주유소"), "_blank");
+    expect(popup.location.href).toBe("");
+
+    vi.advanceTimersByTime(1200);
+
+    expect(popup.location.href).toBe(buildNaverWebFallbackUrl(origin, dest, "테스트주유소"));
+  });
+
+  it("naver: does not redirect if the deep link tab was already closed (app likely took over)", () => {
+    const popup = { closed: true, location: { href: "" } } as unknown as Window;
+    vi.spyOn(window, "open").mockReturnValue(popup);
+
+    openRoute("naver", origin, dest, "테스트주유소");
+    vi.advanceTimersByTime(5000);
+
+    expect(popup.location.href).toBe("");
+  });
+
+  it("naver: does nothing further if window.open was blocked (returns null)", () => {
+    vi.spyOn(window, "open").mockReturnValue(null);
+
+    expect(() => {
+      openRoute("naver", origin, dest, "테스트주유소");
+      vi.advanceTimersByTime(5000);
+    }).not.toThrow();
   });
 });

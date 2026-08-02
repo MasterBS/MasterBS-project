@@ -24,13 +24,13 @@ date: 2026-08-02
 
 ---
 
-## Naver Map 길찾기는 카카오의 `m.map.kakao.com` 같은 웹 폴백 URL이 공식적으로 없다
+## Naver Map 길찾기는 공식 웹 폴백 URL이 없다 — 대신 비공식 `map.naver.com/p/directions/...`로 앱 딥링크를 타임아웃 폴백할 수 있다
 
-**지시문**: Naver Map 길찾기를 새 탭/링크로 열어야 할 때는 `nmap://route/{car|walk|bike|public}?slat=&slng=&dlat=&dlng=&appname=` 앱 스킴을 쓴다(NCP 공식 문서, `appname`은 필수 — 모바일 웹이면 호출 페이지 URL). 카카오의 `https://m.map.kakao.com/scheme/route`처럼 앱 미설치 시에도 자동으로 웹 페이지로 리다이렉트되는 순수 https URL은 문서화되어 있지 않다 — 데스크톱 브라우저나 Naver Map 앱이 없는 환경에서 `window.open("nmap://...")`은 아무 동작도 하지 않을 수 있다는 걸 사용자에게 알려야 한다.
+**지시문**: Naver Map 길찾기는 `nmap://route/{car|walk|bike|public}?slat=&slng=&dlat=&dlng=&appname=` 앱 스킴만 NCP 공식 문서에 있고, 카카오의 `m.map.kakao.com`처럼 앱 미설치 시에도 자동 리다이렉트되는 https URL은 없다 — 앱이 없는 데스크톱에서 `window.open("nmap://...")`은 아무 일도 하지 않는다(실제 사용자 리포트로 확인됨). 고치려면: `window.open(nmapUrl, "_blank")`으로 새 탭을 먼저 열고, `setTimeout`(~1.2초)으로 그 탭이 여전히 열려 있으면(`!popup.closed`) `popup.location.href`를 `https://map.naver.com/p/directions/{원점lng},{원점lat},{이름},/{목적지lng},{목적지lat},{이름},/-/car` 형식(현재 네이버지도 v5 SPA, 좌표는 WGS84 lng,lat 순서로 그대로 받는다 — Mercator 변환 불필요)으로 바꿔치기한다. 앱이 실제로 딥링크를 가로챈 경우(주로 모바일)에도 이 리다이렉트는 해가 되지 않는다 — 사용자는 이미 앱으로 넘어가 탭을 보지 않는다.
 
-**에피소드**: `lib/directions.ts`의 `buildNaverRouteUrl`을 짜기 전 NCP url-scheme 문서와 웹 검색으로 확인. 카카오와 동일한 "새 탭에 열리는 웹 URL"을 기대하고 구현하면 데스크톱에서 조용히 실패하는 제품 결함이 됐을 것.
+**에피소드**: 최초 구현(commit 02ba8d3) 때는 "공식 문서에 웹 폴백이 없다"는 사실만 기록하고 `nmap://` 단독으로 출시했다. 실제 사용자가 "네이버지도에서 길찾기 눌렀을 때 화면이 뜨지 않는다"고 리포트해서 재현·수정했다(commit 예정: `lib/directions.ts`의 `openRoute`/`buildNaverWebFallbackUrl`). 이 프로젝트의 Browser MCP/WebFetch 도구는 `map.naver.com`을 정책상 차단하지만, `curl`과 별도 Playwright 스크립트(`node <script>.mjs`, 프로젝트 루트에서 실행해야 `playwright` 모듈을 찾는다)로는 접근 가능해 URL 포맷을 직접 검증할 수 있었다 — 스크린샷으로 "출발: 현재 위치 → 도착: {이름}" 경로가 실제로 계산되는 것까지 확인했다.
 
-**증거**: `guide.ncloud-docs.com/docs/maps-url-scheme` WebFetch 결과("데스크톱 브라우저 등... 안내가 없습니다"), `lib/directions.ts`의 `buildNaverRouteUrl`(commit 02ba8d3).
+**증거**: `guide.ncloud-docs.com/docs/maps-url-scheme` WebFetch 결과(공식 웹 폴백 없음 확인), `curl -L https://map.naver.com/p/directions/-/-/-/car` → 200 + `pcweb_navermap_v5` SPA 셸 확인, Playwright 스크립트로 `https://map.naver.com/p/directions/127.0008881,37.5587543,...` 접속 시 `<title>길찾기 - 네이버지도</title>` 및 실제 경로(551m, 2분) 렌더링 스크린샷 확인. `lib/directions.ts`의 `openRoute`/`buildNaverWebFallbackUrl`, `lib/directions.test.ts`의 fake-timer 기반 테스트, `e2e/map-provider-selection.spec.ts`의 "[네이버지도 길찾기 웹 폴백]" 테스트(실 Chromium에서 리다이렉트 확인).
 
 ---
 
