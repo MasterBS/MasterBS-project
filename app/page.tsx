@@ -103,6 +103,7 @@ export default function Page() {
                     selectedId={selectedId}
                     onSelect={setSelectedId}
                     currentLocation={geolocation.coords}
+                    provider="kakao"
                   />
                 </div>
               </div>
