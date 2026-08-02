@@ -47,7 +47,6 @@ function createFakeNaver() {
   }
 
   class FakeLatLngBounds {
-    constructor(_sw: unknown, _ne: unknown) {}
     extend(latlng: unknown) {
       boundsExtend(latlng);
     }

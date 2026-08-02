@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SettingsSheet } from "./settings-sheet";
 
@@ -29,5 +29,15 @@ describe("SettingsSheet [S1-1][S6]", () => {
     await user.click(await screen.findByRole("radio", { name: "카카오맵" }));
 
     expect(onProviderChange).toHaveBeenCalledWith("kakao");
+  });
+
+  it("[S1-1] closes the sheet after picking a provider", async () => {
+    const user = userEvent.setup();
+    render(<SettingsSheet provider="naver" onProviderChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "설정" }));
+    await user.click(await screen.findByRole("radio", { name: "카카오맵" }));
+
+    await waitFor(() => expect(screen.queryByRole("radio", { name: "카카오맵" })).not.toBeInTheDocument());
   });
 });

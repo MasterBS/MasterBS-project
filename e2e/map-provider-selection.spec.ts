@@ -73,6 +73,7 @@ test("[S1][S3] 기본값은 네이버지도이고, 설정에서 카카오맵으�
   await page.getByRole("button", { name: "설정" }).click();
   await page.getByRole("radio", { name: "카카오맵" }).click();
   await kakaoRequest;
+  await expect(page.getByRole("radio", { name: "카카오맵" })).not.toBeVisible();
 });
 
 test("[S4] 새로고침해도 선택한 provider가 유지된다", async ({ page, context }) => {
@@ -86,7 +87,6 @@ test("[S4] 새로고침해도 선택한 provider가 유지된다", async ({ page
 
   await page.getByRole("button", { name: "설정" }).click();
   await page.getByRole("radio", { name: "카카오맵" }).click();
-  await page.keyboard.press("Escape");
 
   const kakaoRequest = page.waitForRequest("**/dapi.kakao.com/v2/maps/sdk.js**");
   await page.reload();

@@ -166,7 +166,6 @@ test("[S6] 길찾기 버튼을 클릭하면 새 탭에 카카오맵 길찾기가
   // 카카오맵 길찾기를 검증하려면 설정에서 명시적으로 전환해야 한다.
   await page.getByRole("button", { name: "설정" }).click();
   await page.getByRole("radio", { name: "카카오맵" }).click();
-  await page.keyboard.press("Escape");
 
   const [popup] = await Promise.all([
     context.waitForEvent("page"),

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,8 +24,10 @@ export function SettingsSheet({
   provider: MapProvider;
   onProviderChange: (provider: MapProvider) => void;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button type="button" variant="outline" size="icon" aria-label="설정">
           <SettingsIcon aria-hidden="true" />
@@ -41,7 +44,9 @@ export function SettingsSheet({
             variant="outline"
             value={provider}
             onValueChange={(next) => {
-              if (next) onProviderChange(next as MapProvider);
+              if (!next) return;
+              onProviderChange(next as MapProvider);
+              setOpen(false);
             }}
             className="w-full"
           >
