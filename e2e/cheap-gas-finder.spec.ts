@@ -133,9 +133,10 @@ test("[S4] 셀프주유소 필터를 켜면 셀프 주유소만 남고 안내 �
   await expect(page.getByText("풍한셀프주유소")).toBeVisible();
 });
 
-// 카카오맵 JS SDK가 http://localhost:3000을 허용 Web 플랫폼 도메인으로 등록해야 로드된다
-// (Referer 헤더가 붙는 sub-resource 요청은 401, 직접 navigate는 200 - Kakao Developers 콘솔의
-// "플랫폼 > Web" 설정 문제이며 앱 코드 문제가 아니다). 도메인 등록 후 재활성화한다.
+// 기본 provider(네이버지도)도 카카오맵과 동일한 종류의 문제를 겪는다: NCP 콘솔에
+// 로컬/배포 도메인을 Web 서비스 URL로 등록해야 SDK 서브리소스 로드가 통과한다
+// (카카오는 developers.kakao.com "플랫폼 > Web"에 동일 문제가 있었다 - 앱 코드 문제가
+// 아니다). 둘 중 하나라도 도메인 등록 후 재활성화한다.
 test.fixme(
   "[S5] 리스트 항목을 선택하면 지도에서 해당 핀이 강조된다",
   async ({ page, context }) => {
@@ -147,7 +148,8 @@ test.fixme(
     await expect(page.getByRole("listitem")).toHaveCount(5);
     await page.getByText("강산주유소").click();
 
-    // 선택된 마커는 커스텀 빨간 SVG 이미지(fill=#dc2626)를 쓴다 (components/gas/map-view.tsx)
+    // 선택된 마커는 커스텀 빨간 SVG 이미지(fill=#dc2626)를 쓴다 - 카카오는
+    // components/gas/kakao-map-view.tsx, 네이버는 components/gas/naver-map-view.tsx
     await expect(page.locator('img[src*="dc2626"]')).toBeVisible({ timeout: 10_000 });
   },
 );
@@ -159,6 +161,11 @@ test("[S6] 길찾기 버튼을 클릭하면 새 탭에 카카오맵 길찾기가
   await page.goto("/");
 
   await expect(page.getByRole("listitem")).toHaveCount(5);
+
+  // 기본 provider는 네이버지도(map-provider-selection feature)이므로,
+  // 카카오맵 길찾기를 검증하려면 설정에서 명시적으로 전환해야 한다.
+  await page.getByRole("button", { name: "설정" }).click();
+  await page.getByRole("radio", { name: "카카오맵" }).click();
 
   const [popup] = await Promise.all([
     context.waitForEvent("page"),

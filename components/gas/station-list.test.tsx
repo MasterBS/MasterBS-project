@@ -31,7 +31,7 @@ describe("StationList [S1-2]", () => {
       makeStation({ id: "5", name: "5위주유소", price: 1900, distance: 1049 }),
     ];
 
-    render(<StationList stations={stations} currentLocation={CURRENT_LOCATION} />);
+    render(<StationList stations={stations} currentLocation={CURRENT_LOCATION} provider="kakao" />);
 
     expect(screen.getAllByRole("listitem")).toHaveLength(5);
 
@@ -49,7 +49,7 @@ describe("StationList [S1-2]", () => {
   });
 
   it("[S1-2] renders fewer than 5 items when fewer stations are given", () => {
-    render(<StationList stations={[makeStation()]} currentLocation={CURRENT_LOCATION} />);
+    render(<StationList stations={[makeStation()]} currentLocation={CURRENT_LOCATION} provider="kakao" />);
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
   });
 
@@ -58,7 +58,7 @@ describe("StationList [S1-2]", () => {
     const onSelect = vi.fn();
     const stations = [makeStation({ id: "1" }), makeStation({ id: "2", name: "다른주유소" })];
 
-    render(<StationList stations={stations} onSelect={onSelect} currentLocation={CURRENT_LOCATION} />);
+    render(<StationList stations={stations} onSelect={onSelect} currentLocation={CURRENT_LOCATION} provider="kakao" />);
     await user.click(screen.getByText("다른주유소"));
 
     expect(onSelect).toHaveBeenCalledWith("2");
@@ -67,7 +67,7 @@ describe("StationList [S1-2]", () => {
   it("[S5] marks the station matching selectedId as pressed/selected", () => {
     const stations = [makeStation({ id: "1" }), makeStation({ id: "2", name: "다른주유소" })];
 
-    render(<StationList stations={stations} selectedId="2" currentLocation={CURRENT_LOCATION} />);
+    render(<StationList stations={stations} selectedId="2" currentLocation={CURRENT_LOCATION} provider="kakao" />);
 
     expect(screen.getByText("다른주유소").closest('[aria-pressed]')).toHaveAttribute(
       "aria-pressed",
@@ -84,7 +84,7 @@ describe("StationList [S1-2]", () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
     const station = makeStation({ id: "1", lat: 37.6, lng: 127.1 });
 
-    render(<StationList stations={[station]} currentLocation={CURRENT_LOCATION} />);
+    render(<StationList stations={[station]} currentLocation={CURRENT_LOCATION} provider="kakao" />);
     await user.click(screen.getByRole("button", { name: "길찾기" }));
 
     expect(openSpy).toHaveBeenCalledTimes(1);
@@ -97,13 +97,33 @@ describe("StationList [S1-2]", () => {
     openSpy.mockRestore();
   });
 
+  it("[S2] opens the Naver route URL in a new tab when provider is naver", async () => {
+    const user = userEvent.setup();
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    const station = makeStation({ id: "1", lat: 37.6, lng: 127.1 });
+
+    render(<StationList stations={[station]} currentLocation={CURRENT_LOCATION} provider="naver" />);
+    await user.click(screen.getByRole("button", { name: "길찾기" }));
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const [url, target] = openSpy.mock.calls[0];
+    expect(target).toBe("_blank");
+    const parsed = new URL(String(url));
+    expect(parsed.protocol).toBe("nmap:");
+    expect(parsed.searchParams.get("slat")).toBe("37.5587543");
+    expect(parsed.searchParams.get("dlat")).toBe("37.6");
+    expect(parsed.searchParams.get("dlng")).toBe("127.1");
+
+    openSpy.mockRestore();
+  });
+
   it("[S6] clicking 길찾기 does not also select the station", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "open").mockImplementation(() => null);
     const onSelect = vi.fn();
     const station = makeStation({ id: "1" });
 
-    render(<StationList stations={[station]} onSelect={onSelect} currentLocation={CURRENT_LOCATION} />);
+    render(<StationList stations={[station]} onSelect={onSelect} currentLocation={CURRENT_LOCATION} provider="kakao" />);
     await user.click(screen.getByRole("button", { name: "길찾기" }));
 
     expect(onSelect).not.toHaveBeenCalled();

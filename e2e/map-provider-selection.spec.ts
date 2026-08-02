@@ -1,0 +1,116 @@
+import { expect, test, type Page } from "@playwright/test";
+
+const CURRENT_LOCATION = { latitude: 37.5587543, longitude: 127.0008881 };
+
+const STATION = {
+  id: "1",
+  name: "테스트주유소",
+  brandCode: "SKE",
+  brandLabel: "SK에너지",
+  price: 1800,
+  distance: 500,
+  lat: 37.561,
+  lng: 127.001,
+  isSelfEstimated: false,
+};
+
+async function stubStations(page: Page) {
+  await page.route("**/api/stations*", async (route) => {
+    await route.fulfill({ json: [STATION] });
+  });
+}
+
+// 실 NCP/Kakao 키·도메인 등록 없이도 provider 전환을 증명하기 위해
+// 지도 SDK 스크립트 자체를 최소 스텁으로 대체한다 (실제 렌더링이 아니라
+// "어느 SDK가 로드됐는가"만 네트워크 요청으로 검증한다).
+async function stubMapSdks(page: Page) {
+  await page.route("**/dapi.kakao.com/v2/maps/sdk.js**", async (route) => {
+    await route.fulfill({
+      contentType: "application/javascript",
+      body: `window.kakao = { maps: { load: (cb) => cb(),
+        Map: function(){ this.setBounds=function(){}; this.setCenter=function(){}; },
+        LatLng: function(lat,lng){ this.getLat=()=>lat; this.getLng=()=>lng; },
+        LatLngBounds: function(){ this.extend=function(){}; },
+        Marker: function(){ this.setMap=function(){}; this.setImage=function(){}; this.setZIndex=function(){}; },
+        MarkerImage: function(){}, Size: function(){} } };`,
+    });
+  });
+  await page.route("**/oapi.map.naver.com/openapi/v3/maps.js**", async (route) => {
+    await route.fulfill({
+      contentType: "application/javascript",
+      body: `window.naver = { maps: {
+        Map: function(){ this.fitBounds=function(){}; this.setCenter=function(){}; },
+        LatLng: function(lat,lng){ this.lat=()=>lat; this.lng=()=>lng; },
+        LatLngBounds: function(){ this.extend=function(){}; },
+        Marker: function(){ this.setMap=function(){}; this.setIcon=function(){}; },
+        Size: function(){} } };`,
+    });
+  });
+}
+
+test("[S6] 설정 진입점은 위치 권한이 거부된 상태에서도 항상 보인다", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByText("위치 권한이 필요해요")).toBeVisible();
+  await expect(page.getByRole("button", { name: "설정" })).toBeVisible();
+});
+
+test("[S1][S3] 기본값은 네이버지도이고, 설정에서 카카오맵으로 전환하면 즉시 카카오 SDK가 로드된다", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation(CURRENT_LOCATION);
+  await stubStations(page);
+  await stubMapSdks(page);
+
+  const naverRequest = page.waitForRequest("**/oapi.map.naver.com/openapi/v3/maps.js**");
+  await page.goto("/");
+  await expect(page.getByRole("listitem")).toHaveCount(1);
+  await naverRequest;
+
+  const kakaoRequest = page.waitForRequest("**/dapi.kakao.com/v2/maps/sdk.js**");
+  await page.getByRole("button", { name: "설정" }).click();
+  await page.getByRole("radio", { name: "카카오맵" }).click();
+  await kakaoRequest;
+  await expect(page.getByRole("radio", { name: "카카오맵" })).not.toBeVisible();
+});
+
+test("[S4] 새로고침해도 선택한 provider가 유지된다", async ({ page, context }) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation(CURRENT_LOCATION);
+  await stubStations(page);
+  await stubMapSdks(page);
+
+  await page.goto("/");
+  await expect(page.getByRole("listitem")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "설정" }).click();
+  await page.getByRole("radio", { name: "카카오맵" }).click();
+
+  const kakaoRequest = page.waitForRequest("**/dapi.kakao.com/v2/maps/sdk.js**");
+  await page.reload();
+  await kakaoRequest;
+});
+
+test("[네이버지도 길찾기 웹 폴백] 앱 딥링크가 반응 없으면 새 탭이 네이버지도 웹으로 넘어간다", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation(CURRENT_LOCATION);
+  await stubStations(page);
+  await stubMapSdks(page);
+
+  await page.goto("/");
+  await expect(page.getByRole("listitem")).toHaveCount(1);
+
+  const [popup] = await Promise.all([
+    context.waitForEvent("page"),
+    page.getByRole("button", { name: "길찾기", exact: true }).click(),
+  ]);
+
+  // nmap://는 이 브라우저에 핸들러가 없어 아무 데도 못 감 → 1.2초 뒤 웹 폴백으로 리다이렉트되는지 확인
+  await popup.waitForURL(/map\.naver\.com\/p\/directions/, { timeout: 5000 });
+  expect(popup.url()).toContain("map.naver.com/p/directions");
+});
