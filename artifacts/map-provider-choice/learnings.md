@@ -35,3 +35,59 @@ date: 2026-08-05
 **에피소드**: plan.md Task 4는 `components/gas/map-view.tsx`를 카카오 전용 컴포넌트에서 `provider`/`kakaoAppKey`/`naverAppKey`를 받는 디스패처로 재작성하는 일이었고, "영향 받는 파일"에는 `app/page.tsx`가 없었다(그건 Task 5 담당). 하지만 `app/page.tsx`는 이미 Task 3에서 옛 시그니처(`appKey` 단일 prop)로 `MapView`를 호출하고 있어서, Task 4만 구현하면 그 호출부가 타입 에러를 낸다. `app/page.tsx`의 해당 호출부만 `provider="kakao"`(하드코딩, Task 5에서 실제 상태로 교체 예정)로 최소 수정해 `bun run typecheck`·`bun run build`를 다시 통과시켰다. plan.md의 Task 4 제목 옆에 "✅ 완료"만 표시하고 "영향 받는 파일"은 고치지 않았다 — 실제 변경 사항은 diff와 커밋 메시지로 충분히 읽힌다.
 
 **증거**: commit d0d6544, `app/page.tsx`의 `MapView` 호출부(`provider="kakao"` 추가) — 수정 전 `bun run typecheck`가 `Property 'appKey' does not exist on type 'MapViewProps'` 계열 에러로 실패했음(로컬 확인, 커밋에는 포함 안 함).
+
+---
+triggers: [playwright test:e2e, browserType.launch, Executable doesn't exist, chrome-headless-shell, pw-browsers]
+status: verified
+scope: this-session (이 클라우드 세션의 /opt/pw-browsers 사전 설치 버전과 package.json의 @playwright/test 버전 불일치)
+date: 2026-08-05
+---
+## `bun run test:e2e`가 이 세션에서 바로는 안 돈다 — 사전 설치된 chromium 리비전과 package.json의 playwright 버전이 어긋난다
+
+**지시문**: `bunx eslint`가 처음부터 실패했던 것과 같은 원인 계열 — 이 세션은 `bun install`을 방금 실행해서 `@playwright/test`가 `^1.52.0` 범위의 최신(1.59.1, chromium 리비전 1217 기대)으로 설치되지만, `/opt/pw-browsers/`에는 더 오래된 리비전(1194)만 미리 받아져 있다. `bun run test:e2e`를 그대로 돌리면 `Executable doesn't exist at .../chromium_headless_shell-1217/...`로 즉시 실패한다. 세션 시스템 프롬프트가 이미 안내한 대로, `playwright install`은 절대 돌리지 말고 `playwright.config.ts`의 `projects[].use.launchOptions.executablePath`에 `/opt/pw-browsers/chromium`(1194용 실행 파일 심볼릭 링크)을 **임시로** 넣어야 실행된다. **이 변경은 세션 로컬 우회이므로 절대 커밋하지 않는다** — 다른 개발자·CI 환경의 `/opt/pw-browsers` 경로는 다르거나 아예 없다. e2e를 로컬에서 확인한 뒤에는 `git checkout -- playwright.config.ts`로 되돌린다.
+
+**에피소드**: map-provider-choice 최종 체크포인트에서 `bun run test:e2e -- map-provider-choice`를 처음 돌렸을 때 4개 테스트 전부 `browserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1217/...`로 실패했다. `ls /opt/pw-browsers/`로 실제 설치된 리비전이 `chromium-1194`뿐임을 확인하고, `/opt/pw-browsers/chromium`이 그 실행 파일을 가리키는 심볼릭 링크임을 확인해 `executablePath`로 지정하니 정상 실행됐다. 확인이 끝난 뒤 `git checkout -- playwright.config.ts`로 되돌렸다.
+
+**증거**: 2026-08-05, `ls -la /opt/pw-browsers/chromium` → `-> /opt/pw-browsers/chromium-1194/chrome-linux/chrome`. `executablePath` 지정 전/후 동일 명령(`bun run test:e2e -- map-provider-choice`)의 실패/성공 대조.
+
+---
+triggers: [geolocation, getCurrentPosition, PERMISSION_DENIED, context.grantPermissions, playwright e2e hang, 위치 권한이 필요해요]
+status: hypothesis
+scope: this-session (headless chromium 1194 + @playwright/test 1.59.1 조합, geolocation 권한 미부여 상태)
+date: 2026-08-05
+---
+## 이 세션에서는 geolocation 권한을 명시적으로 grant/deny하지 않으면 getCurrentPosition이 즉시 거부되지 않고 무한정 멈춘다
+
+**지시문**: 이 세션의 Playwright(chromium 1194) 환경에서 `context.grantPermissions(["geolocation"])`를 호출하지 않은 채 실제 앱 페이지(`http://localhost:3000/`)에서 `navigator.geolocation.getCurrentPosition`을 호출하면 성공도 `PERMISSION_DENIED` 에러도 오지 않고 20초 넘게 아무 콜백도 오지 않는다(재현: `page.evaluate`로 직접 호출, 10초 타임아웃까지 관찰). `about:blank`(opaque origin)에서는 스펙대로 즉시 `ERROR:1`이 오므로, 이 현상은 "권한 프롬프트가 자동으로 거부되는" 게 아니라 "실제 origin에서 프롬프트가 뜬 채로 아무도 응답하지 않아 영원히 pending"인 것으로 보인다. cheap-gas-finder의 위치 거부 UI(S8)를 이 세션에서 재현하려면 `context.grantPermissions([])`(빈 배열로 명시적 거부) 또는 CDP로 권한을 명시적으로 deny하는 방법을 먼저 시도한다 — 안 되면 이 세션의 환경 한계로 문서화하고 실기기/다른 CI 환경에서 재확인을 요청한다. **map-provider-choice 자체의 버그가 아니다**: 새로 만든 e2e 테스트는 전부 `context.grantPermissions(["geolocation"])`를 먼저 호출해 이 경로를 피해간다.
+
+**에피소드**: `e2e/cheap-gas-finder.spec.ts`의 `[S8][S1]` 테스트(권한 미부여 상태로 시작해 거부 UI를 확인하는 유일한 테스트)가 이 세션에서 `위치 권한이 필요해요` 텍스트를 5초 안에 찾지 못해 실패했다. map-provider-choice의 게이팅 로직 때문인지 의심해 페이지 스냅샷을 봤더니 `radio "카카오맵" [checked]`로 게이팅은 정확히 우회됐고 결과 화면(`ResultsPage`)까지 도달해 있었다 — 문제는 그 이후 순수 geolocation 타이밍이었다. `about:blank`에서의 raw API 호출(즉시 ERROR:1)과 실제 앱 페이지에서의 raw API 호출(10초 타임아웃)을 나란히 비교해 이 feature의 코드와 무관한 환경 차이임을 확인했다. 원인(권한 정책 헤더, chromium 1194의 자동거부 로직 차이 등)까지는 특정하지 못해 `hypothesis`로 남긴다.
+
+**증거**: 2026-08-05, `/tmp/geo-raw.spec.ts`(about:blank, 결과 `ERROR:1`, 171ms) vs `/tmp/geo-app.spec.ts`(`http://localhost:3000/`, 결과 `TIMED_OUT_10S`) — 둘 다 이 대화의 임시 재현 스크립트, 저장소에는 커밋하지 않음. `e2e/cheap-gas-finder.spec.ts`의 `[S8][S1]` 테스트 실패 로그와 `error-context.md` 스냅샷(`근처 주유소를 찾는 중…` 상태로 멈춤).
+
+---
+triggers: [window.open, popup, chrome-error://chromewebdata, m.map.kakao.com, 프록시, 외부 도메인]
+status: hypothesis
+scope: this-session (아웃바운드 네트워크가 프록시를 통과하는 이 세션)
+date: 2026-08-05
+---
+## 이 세션에서 m.map.kakao.com으로 실제 팝업 네비게이션이 chrome-error://chromewebdata로 끝난다
+
+**지시문**: 이 세션에서 카카오맵 길찾기 e2e 테스트(`window.open`으로 연 새 탭이 `https://m.map.kakao.com/scheme/route`로 실제 리다이렉트되는지 확인하는 유형)를 돌리면 `popup.waitForLoadState()` 이후 `popup.url()`이 `chrome-error://chromewebdata/`가 될 수 있다 — 앱 코드나 URL 빌더 문제가 아니라 이 세션의 아웃바운드 네트워크(프록시 경유)가 `m.map.kakao.com` 같은 임의 외부 도메인으로의 실제 브라우저 네비게이션을 허용하지 않아서로 추정된다(원인 미확정이라 hypothesis). 이런 "실제 외부 도메인 도달"까지 확인하는 e2e 단언은 이 세션에서 신뢰할 수 없다 — URL 생성 자체는 단위 테스트(`lib/directions.test.ts`)로, 실제 네비게이션은 사용자 로컬 환경에서 재확인한다.
+
+**에피소드**: `e2e/cheap-gas-finder.spec.ts`의 `[S6]` 테스트가 `expect(popup.url()).toMatch(/kakao\.com/)`에서 실제로는 `chrome-error://chromewebdata/`를 받아 실패했다. 같은 세션에서 `curl`로 일반 웹 요청은 프록시를 통해 정상 동작하는 걸 이미 알고 있어(system prompt의 `HTTPS_PROXY` 안내), 임의 외부 도메인으로의 브라우저 팝업 네비게이션만 막히는 것으로 추정했다. map-provider-choice가 새로 만든 네이버 버전(`nmap://`)은 애초에 팝업 이벤트 자체가 안 떠서(별도 항목 참고) 이 프록시 가설을 직접 재검증하지는 못했다.
+
+**증거**: 2026-08-05, `bun run test:e2e -- cheap-gas-finder`의 `[S6]` 테스트 실패 로그(`Received string: "chrome-error://chromewebdata/"`).
+
+---
+triggers: [nmap://, window.open, popup event, custom scheme, 프로토콜 핸들러, waitForEvent timeout]
+status: verified
+scope: this-repo (Chromium 일반 — 커스텀 URL 스킴에 등록된 핸들러가 없는 모든 환경에 해당할 가능성 높음)
+date: 2026-08-05
+---
+## `window.open("nmap://...")`은 Chromium에서 popup 페이지 이벤트 자체를 발생시키지 않는다
+
+**지시문**: `https://` 같은 표준 스킴과 달리, 브라우저에 등록된 프로토콜 핸들러가 없는 커스텀 스킴(`nmap://`, `kakaomap://` 앱 딥링크 등)을 `window.open(url, "_blank")`으로 열면 Chromium이 새 `Page`/팝업 이벤트를 아예 만들지 않는다. Playwright e2e에서 `page.waitForEvent("popup")`으로 이런 딥링크 클릭을 검증하려 하면 새 탭이 열리지 않아 타임아웃(30초)으로 실패한다 — 코드 버그가 아니라 실기기(해당 앱이 설치된 모바일)에서만 실제로 열리는, 데스크톱 브라우저 자동화가 구조적으로 검증할 수 없는 경계다. URL 생성 자체(파라미터 정확성)는 단위 테스트로 증명하고, 실제 딥링크 오픈은 `test.fixme` + 사유 주석으로 남긴 뒤 실기기 확인으로 이월한다.
+
+**에피소드**: map-provider-choice의 `e2e/map-provider-choice.spec.ts`에서 `[S6]`(네이버지도 길찾기) 테스트가 `page.waitForEvent("popup")`에서 30초 타임아웃으로 실패했다. `lib/directions.test.ts`·`station-list.test.tsx`의 단위 테스트는 이미 통과했으므로 URL 생성 로직 문제가 아님을 먼저 확인했고, `nmap://`이 미등록 커스텀 스킴이라는 데서 원인을 좁혔다. 카카오의 `S6` e2e 테스트가 `https://m.map.kakao.com/...`로 실제 팝업을 여는 데는 성공하는 것과 대조된다(단, 그 팝업의 최종 네비게이션은 별도 항목의 프록시 이슈로 실패). `test.fixme`로 전환하고 사유를 주석에 남겼다.
+
+**증거**: 2026-08-05, `e2e/map-provider-choice.spec.ts`의 `[S6]` 테스트를 `test.fixme`로 전환(사유 주석 포함). 전환 전 실패 로그: `Error: page.waitForEvent: Test timeout of 30000ms exceeded. waiting for event "popup"`.

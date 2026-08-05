@@ -1,6 +1,18 @@
 import { expect, test, type Page } from "@playwright/test";
+import { MAP_PROVIDER_STORAGE_KEY } from "@/config/map-provider";
 
 const CURRENT_LOCATION = { latitude: 37.5587543, longitude: 127.0008881 };
+
+// map-provider-choice가 앱 진입을 지도 제공자 선택 뒤로 게이팅하므로, 이 파일의
+// 시나리오(위치 권한 → 결과)를 그대로 재현하려면 매 테스트 진입 전에 제공자가
+// 이미 선택·저장된 것처럼 만들어야 한다. 제공자 선택 자체의 검증은
+// e2e/map-provider-choice.spec.ts가 담당한다.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(
+    (key) => window.localStorage.setItem(key, "kakao"),
+    MAP_PROVIDER_STORAGE_KEY,
+  );
+});
 
 type StubStation = {
   id: string;
