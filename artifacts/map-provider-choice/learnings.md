@@ -21,3 +21,17 @@ date: 2026-08-05
 **에피소드**: plan.md의 "Checkpoint: Tasks 1~2 이후" 항목을 템플릿 그대로 `scripts/spec-coverage.sh map-provider-choice --tests`로 작성했는데, Task 1·2가 담당하는 ID(S5-1, S5-2, INV-1, 그리고 지원 Task라 ID 없음)를 빼면 나머지 전부(S1-1, S1-2, S2-1, S2-2, S3, S4-1, S4-2, S6, INV-2)가 아직 미구현이라 `--tests`가 구조적으로 못 지나간다. 위 ID 충돌 항목 덕에 대부분은 오탐으로 가려졌지만 `INV-2`/`S2-1`/`S2-2`는 진짜로 남았다. Task 1·2가 담당한 ID(S5-1, S5-2, INV-1)만 자체 grep으로 인용 확인하고 이 체크포인트를 통과 처리했다.
 
 **증거**: 2026-08-05, `grep -rE "\[S5-1|\[S5-2|\[INV-1" --include='*.test.ts' --include='*.test.tsx' app components lib services hooks types config e2e` → `components/gas/naver-map-view.test.tsx`의 3개 인용 확인.
+
+---
+triggers: [map-view.tsx, 디스패처, dispatcher, prop 시그니처 변경, typecheck 깨짐, vertical slice]
+status: verified
+scope: this-repo (map-provider-choice Task 4)
+date: 2026-08-05
+---
+## 공유 컴포넌트의 prop 시그니처를 바꾸는 Task는 호출부도 같이 고쳐야 그 Task 혼자 빌드가 선다
+
+**지시문**: plan.md가 "컴포넌트 A의 시그니처를 바꾼다"를 Task X에, "컴포넌트 A를 실제로 쓰는 화면 배선"을 Task Y(X 이후)에 나눠 배정했다면, X를 구현하는 시점에 A의 기존 호출부가 이미 프로젝트에 있는지 먼저 확인한다. 있다면 X 안에서 그 호출부도 새 시그니처에 맞게 최소한으로 고쳐야 한다 — 그러지 않으면 X 완료 시점에 `bun run typecheck`/`bun run build`가 깨져 "각 Task는 시스템을 동작 가능한 상태로 둔다" 원칙을 어긴다. 최소 수정은 Y가 나중에 더 다듬을 자리(예: 하드코딩된 기본값)를 남겨도 된다.
+
+**에피소드**: plan.md Task 4는 `components/gas/map-view.tsx`를 카카오 전용 컴포넌트에서 `provider`/`kakaoAppKey`/`naverAppKey`를 받는 디스패처로 재작성하는 일이었고, "영향 받는 파일"에는 `app/page.tsx`가 없었다(그건 Task 5 담당). 하지만 `app/page.tsx`는 이미 Task 3에서 옛 시그니처(`appKey` 단일 prop)로 `MapView`를 호출하고 있어서, Task 4만 구현하면 그 호출부가 타입 에러를 낸다. `app/page.tsx`의 해당 호출부만 `provider="kakao"`(하드코딩, Task 5에서 실제 상태로 교체 예정)로 최소 수정해 `bun run typecheck`·`bun run build`를 다시 통과시켰다. plan.md의 Task 4 제목 옆에 "✅ 완료"만 표시하고 "영향 받는 파일"은 고치지 않았다 — 실제 변경 사항은 diff와 커밋 메시지로 충분히 읽힌다.
+
+**증거**: commit d0d6544, `app/page.tsx`의 `MapView` 호출부(`provider="kakao"` 추가) — 수정 전 `bun run typecheck`가 `Property 'appKey' does not exist on type 'MapViewProps'` 계열 에러로 실패했음(로컬 확인, 커밋에는 포함 안 함).
