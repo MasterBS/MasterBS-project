@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MAP_PROVIDER_STORAGE_KEY } from "@/config/map-provider";
 
 const useGeolocationMock = vi.fn();
 const useStationsMock = vi.fn();
@@ -19,10 +20,17 @@ vi.mock("@/components/gas/map-view", () => ({
 
 const { default: Page } = await import("./page");
 
+afterEach(() => {
+  localStorage.clear();
+});
+
 describe("Page [S1-1][S2]", () => {
   beforeEach(() => {
     useGeolocationMock.mockReset();
     useStationsMock.mockReset();
+    // 이 describe 블록은 지도 제공자 선택 이후(cheap-gas-finder) 시나리오만 다루므로
+    // map-provider-choice의 진입 게이팅을 우회하도록 항상 선택된 상태로 시작한다.
+    localStorage.setItem(MAP_PROVIDER_STORAGE_KEY, "kakao");
   });
 
   it("[S1-1] shows a loading spinner and 근처 주유소를 찾는 중... while geolocation resolves", () => {
@@ -234,5 +242,58 @@ describe("Page [S1-1][S2]", () => {
 
     expect(screen.getByText("10km 내 1곳만 찾았어요")).toBeInTheDocument();
     expect(screen.getByText("1위주유소")).toBeInTheDocument();
+  });
+});
+
+describe("Page provider selection [S1-1][S1-2][S2-1][S2-2][S3]", () => {
+  beforeEach(() => {
+    useGeolocationMock.mockReset();
+    useStationsMock.mockReset();
+  });
+
+  it("[S1-1][S1-2] shows only the provider selection screen and never calls useGeolocation when no provider is stored", () => {
+    render(<Page />);
+
+    expect(screen.getByRole("button", { name: "카카오맵" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "네이버지도" })).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "휘발유" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("map-view-mock")).not.toBeInTheDocument();
+    expect(useGeolocationMock).not.toHaveBeenCalled();
+  });
+
+  it("[S2-1] hides the selection screen and starts the location flow after picking a provider", async () => {
+    const user = userEvent.setup();
+    useGeolocationMock.mockReturnValue({ status: "loading", coords: null, retry: vi.fn() });
+    useStationsMock.mockReturnValue({ status: "idle", stations: [], error: null });
+
+    render(<Page />);
+    await user.click(screen.getByRole("button", { name: "카카오맵" }));
+
+    expect(screen.queryByRole("button", { name: "카카오맵" })).not.toBeInTheDocument();
+    expect(useGeolocationMock).toHaveBeenCalled();
+    expect(screen.getByText("근처 주유소를 찾는 중…")).toBeInTheDocument();
+  });
+
+  it("[S2-2] persists the selected provider to localStorage", async () => {
+    const user = userEvent.setup();
+    useGeolocationMock.mockReturnValue({ status: "loading", coords: null, retry: vi.fn() });
+    useStationsMock.mockReturnValue({ status: "idle", stations: [], error: null });
+
+    render(<Page />);
+    await user.click(screen.getByRole("button", { name: "카카오맵" }));
+
+    expect(localStorage.getItem(MAP_PROVIDER_STORAGE_KEY)).toBe("kakao");
+  });
+
+  it("[S3] skips the selection screen and starts the location flow immediately when a provider is already stored", () => {
+    localStorage.setItem(MAP_PROVIDER_STORAGE_KEY, "naver");
+    useGeolocationMock.mockReturnValue({ status: "loading", coords: null, retry: vi.fn() });
+    useStationsMock.mockReturnValue({ status: "idle", stations: [], error: null });
+
+    render(<Page />);
+
+    expect(screen.queryByRole("button", { name: "카카오맵" })).not.toBeInTheDocument();
+    expect(useGeolocationMock).toHaveBeenCalled();
+    expect(screen.getByText("근처 주유소를 찾는 중…")).toBeInTheDocument();
   });
 });

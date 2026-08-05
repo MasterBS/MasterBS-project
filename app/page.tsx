@@ -5,9 +5,11 @@ import dynamic from "next/dynamic";
 import { Loader2Icon } from "lucide-react";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useStations } from "@/hooks/use-stations";
+import { useMapProvider } from "@/hooks/use-map-provider";
 import { BRAND_KEYS, MIN_RESULT_COUNT } from "@/config/opinet";
 import { FuelToggle } from "@/components/gas/fuel-toggle";
 import { Filters } from "@/components/gas/filters";
+import { ProviderSelect } from "@/components/gas/provider-select";
 import { StationList } from "@/components/gas/station-list";
 import {
   ApiErrorMessage,
@@ -24,6 +26,20 @@ const MapView = dynamic(() => import("@/components/gas/map-view").then((m) => m.
 const KAKAO_MAP_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY ?? "";
 
 export default function Page() {
+  const mapProvider = useMapProvider();
+
+  if (mapProvider.status === "unselected") {
+    return (
+      <main className="mx-auto max-w-6xl p-4">
+        <ProviderSelect onSelect={mapProvider.select} />
+      </main>
+    );
+  }
+
+  return <ResultsPage />;
+}
+
+function ResultsPage() {
   const [fuel, setFuel] = useState<FuelType>("gasoline");
   const [brands, setBrands] = useState<BrandKey[]>(BRAND_KEYS);
   const [selfOnly, setSelfOnly] = useState(false);
