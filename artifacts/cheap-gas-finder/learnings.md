@@ -60,6 +60,8 @@ date: 2026-07-23
 
 ## 이 sandbox Browser MCP 창에서는 geolocation이 항상 "denied"다 — happy path는 못 보지만 거부 상태 UI는 실제로 검증된다
 
+> 이 항목은 **Browser MCP**(대화형 브라우저 자동화 도구) 한정이다. **Playwright 헤드리스**로 같은 걸 재현하면 다른 증상(즉시 거부가 아니라 무한 대기)이 난다 — `map-provider-choice/learnings.md`의 "이 세션에서는 geolocation 권한을 명시적으로 grant/deny하지 않으면..." 항목 참고. 서로 모순이 아니라 도구가 다르다.
+
 **지시문**: 이 프로젝트에서 Browser MCP(`mcp__Claude_Browser__*`)로 위치 *허용* happy path(S1, S2 등)를 시각적으로 검증하려 하지 않는다 — `navigator.permissions.query({name:'geolocation'})`이 항상 `"denied"`를 반환하며, 프롬프트도 뜨지 않고 재시도로 우회할 수도 없다. 허용 흐름은 사용자에게 로컬 `bun run dev` + 본인 브라우저에서 확인해달라고 요청하거나, Playwright `context.grantPermissions(['geolocation'])`(최종 e2e 체크포인트에서 예정됨)로 대체한다. 반대로 위치 **거부** 상태 UI(S8 등)는 이 sandbox가 항상 거부하는 덕분에 오히려 실제 앱에서 그대로 재현·검증할 수 있다 — 별도 mock 없이 `bun run dev` 페이지를 열기만 하면 거부 분기가 실제로 렌더링된다.
 
 **에피소드**: Task 3~4에서 처음 발견(빈 화면, 콘솔 에러 없음, `/api/stations` 호출도 없음) — 당시엔 거부 상태에 대한 UI 자체가 없어 "막힌 것"으로만 봤다. Task 7에서 위치 거부 UI(`LocationDeniedMessage`)를 구현한 뒤 같은 sandbox에서 `bun run dev`로 열어보니, 별도 조작 없이 실제로 "위치 권한이 필요해요" 화면이 렌더링되고 "다시 시도" 클릭도 콘솔 에러 없이 동작함을 확인했다 — 이 sandbox의 제약이 오히려 이 특정 시나리오의 무료 실 브라우저 증거가 됐다.

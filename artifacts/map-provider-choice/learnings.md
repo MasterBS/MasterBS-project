@@ -13,7 +13,11 @@ date: 2026-08-05
 **증거**: 2026-08-05, `bash scripts/spec-coverage.sh map-provider-choice --tests` 출력(`INV-2`/`S2-1`/`S2-2`만 미인용) vs `grep -rnE "\[S1-1\]|\[S1-2\]|\[S3\]|\[S4-1\]|\[S4-2\]|\[S6\]" --include='*.test.ts' --include='*.test.tsx' app components lib services hooks types config e2e`로 확인한 `cheap-gas-finder` 소유 히트(`app/page.test.tsx`, `components/gas/filters.test.tsx`, `components/gas/station-list.test.tsx`, `lib/directions.test.ts`).
 
 ---
-
+triggers: [spec-coverage.sh, 체크포인트, 중간 체크포인트, --tests, 구조적으로 통과 불가]
+status: verified
+scope: this-repo (scripts/spec-coverage.sh --tests, 여러 Task에 걸친 체크포인트)
+date: 2026-08-05
+---
 ## 체크포인트가 여러 Task에 걸친 ID를 담당할 때 `--tests`는 마지막 담당 Task 완료 후에만 의미가 있다
 
 **지시문**: plan.md의 중간 체크포인트(예: "Tasks 1~2 이후")가 아직 실행되지 않은 뒤쪽 Task들이 담당하는 ID까지 spec.md에 존재하면, `scripts/spec-coverage.sh <feature> --tests`는 그 시점에 구조적으로 통과할 수 없다(위 항목의 ID 충돌 오탐과 별개로, 진짜 미구현 ID도 있다). 이런 중간 체크포인트에서는 `--tests` 없이 `scripts/spec-coverage.sh <feature>`(plan 배정 확인)만 돌리고, 그 체크포인트가 담당하는 Task들의 ID만 별도로 `grep`해 인용을 확인한다. `--tests` 풀 검사는 관련 ID의 소유 Task가 전부 끝난 체크포인트(이 plan의 경우 "Tasks 3~5 이후", "Task 6 이후", 최종 체크포인트)에서만 의미가 있다.
@@ -57,6 +61,8 @@ scope: this-session (headless chromium 1194 + @playwright/test 1.59.1 조합, ge
 date: 2026-08-05
 ---
 ## 이 세션에서는 geolocation 권한을 명시적으로 grant/deny하지 않으면 getCurrentPosition이 즉시 거부되지 않고 무한정 멈춘다
+
+> `cheap-gas-finder/learnings.md`의 "이 sandbox Browser MCP 창에서는 geolocation이 항상 denied다" 항목과 겹쳐 보이지만 다른 도구다: 그 항목은 **Browser MCP**(즉시 거부), 이 항목은 **Playwright 헤드리스**(무한 대기)다. 모순 아님.
 
 **지시문**: 이 세션의 Playwright(chromium 1194) 환경에서 `context.grantPermissions(["geolocation"])`를 호출하지 않은 채 실제 앱 페이지(`http://localhost:3000/`)에서 `navigator.geolocation.getCurrentPosition`을 호출하면 성공도 `PERMISSION_DENIED` 에러도 오지 않고 20초 넘게 아무 콜백도 오지 않는다(재현: `page.evaluate`로 직접 호출, 10초 타임아웃까지 관찰). `about:blank`(opaque origin)에서는 스펙대로 즉시 `ERROR:1`이 오므로, 이 현상은 "권한 프롬프트가 자동으로 거부되는" 게 아니라 "실제 origin에서 프롬프트가 뜬 채로 아무도 응답하지 않아 영원히 pending"인 것으로 보인다. cheap-gas-finder의 위치 거부 UI(S8)를 이 세션에서 재현하려면 `context.grantPermissions([])`(빈 배열로 명시적 거부) 또는 CDP로 권한을 명시적으로 deny하는 방법을 먼저 시도한다 — 안 되면 이 세션의 환경 한계로 문서화하고 실기기/다른 CI 환경에서 재확인을 요청한다. **map-provider-choice 자체의 버그가 아니다**: 새로 만든 e2e 테스트는 전부 `context.grantPermissions(["geolocation"])`를 먼저 호출해 이 경로를 피해간다.
 
