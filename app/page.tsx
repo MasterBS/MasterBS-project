@@ -24,6 +24,7 @@ const MapView = dynamic(() => import("@/components/gas/map-view").then((m) => m.
 });
 
 const KAKAO_MAP_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY ?? "";
+const NAVER_MAP_APP_KEY = process.env.NEXT_PUBLIC_NAVER_MAP_KEY ?? "";
 
 export default function Page() {
   const mapProvider = useMapProvider();
@@ -103,7 +104,9 @@ function ResultsPage() {
                 <div className="md:order-2 md:w-1/2">
                   <div className="h-56 md:sticky md:top-4 md:h-[520px]">
                     <MapView
-                      appKey={KAKAO_MAP_APP_KEY}
+                      provider="kakao"
+                      kakaoAppKey={KAKAO_MAP_APP_KEY}
+                      naverAppKey={NAVER_MAP_APP_KEY}
                       currentLocation={geolocation.coords}
                       stations={stations.stations}
                       selectedId={selectedId}
