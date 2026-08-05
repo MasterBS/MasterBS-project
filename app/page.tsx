@@ -10,6 +10,7 @@ import { BRAND_KEYS, MIN_RESULT_COUNT } from "@/config/opinet";
 import { FuelToggle } from "@/components/gas/fuel-toggle";
 import { Filters } from "@/components/gas/filters";
 import { ProviderSelect } from "@/components/gas/provider-select";
+import { ProviderToggle } from "@/components/gas/provider-toggle";
 import { StationList } from "@/components/gas/station-list";
 import {
   ApiErrorMessage,
@@ -17,6 +18,7 @@ import {
   LocationDeniedMessage,
   PartialResultsBanner,
 } from "@/components/gas/status-message";
+import type { MapProvider } from "@/types/map-provider";
 import type { BrandKey, FuelType } from "@/types/station";
 
 const MapView = dynamic(() => import("@/components/gas/map-view").then((m) => m.MapView), {
@@ -37,10 +39,16 @@ export default function Page() {
     );
   }
 
-  return <ResultsPage />;
+  return <ResultsPage provider={mapProvider.provider} onProviderChange={mapProvider.select} />;
 }
 
-function ResultsPage() {
+function ResultsPage({
+  provider,
+  onProviderChange,
+}: {
+  provider: MapProvider;
+  onProviderChange: (provider: MapProvider) => void;
+}) {
   const [fuel, setFuel] = useState<FuelType>("gasoline");
   const [brands, setBrands] = useState<BrandKey[]>(BRAND_KEYS);
   const [selfOnly, setSelfOnly] = useState(false);
@@ -62,6 +70,9 @@ function ResultsPage() {
   return (
     <main className="mx-auto max-w-6xl p-4">
       <h1 className="mb-4 text-lg font-bold">내 주변 저가 주유소 TOP5</h1>
+      <div className="mb-3">
+        <ProviderToggle value={provider} onChange={onProviderChange} />
+      </div>
       {geolocation.status === "success" && (
         <>
           <FuelToggle value={fuel} onChange={setFuel} />
@@ -104,7 +115,7 @@ function ResultsPage() {
                 <div className="md:order-2 md:w-1/2">
                   <div className="h-56 md:sticky md:top-4 md:h-[520px]">
                     <MapView
-                      provider="kakao"
+                      provider={provider}
                       kakaoAppKey={KAKAO_MAP_APP_KEY}
                       naverAppKey={NAVER_MAP_APP_KEY}
                       currentLocation={geolocation.coords}

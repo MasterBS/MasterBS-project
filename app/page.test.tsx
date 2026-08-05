@@ -13,8 +13,12 @@ vi.mock("@/hooks/use-stations", () => ({
   useStations: (...args: unknown[]) => useStationsMock(...args),
 }));
 vi.mock("@/components/gas/map-view", () => ({
-  MapView: (props: { selectedId?: string | null }) => (
-    <div data-testid="map-view-mock" data-selected-id={props.selectedId ?? ""} />
+  MapView: (props: { provider?: string; selectedId?: string | null }) => (
+    <div
+      data-testid="map-view-mock"
+      data-provider={props.provider ?? ""}
+      data-selected-id={props.selectedId ?? ""}
+    />
   ),
 }));
 
@@ -295,5 +299,79 @@ describe("Page provider selection [S1-1][S1-2][S2-1][S2-2][S3]", () => {
     expect(screen.queryByRole("button", { name: "카카오맵" })).not.toBeInTheDocument();
     expect(useGeolocationMock).toHaveBeenCalled();
     expect(screen.getByText("근처 주유소를 찾는 중…")).toBeInTheDocument();
+  });
+});
+
+const TOGGLE_TEST_STATIONS = [
+  {
+    id: "1",
+    name: "1위주유소",
+    brandCode: "SKE" as const,
+    brandLabel: "SK에너지",
+    price: 1800,
+    distance: 500,
+    lat: 37.56,
+    lng: 127.0,
+    isSelfEstimated: false,
+  },
+  {
+    id: "2",
+    name: "2위주유소",
+    brandCode: "GSC" as const,
+    brandLabel: "GS칼텍스",
+    price: 1810,
+    distance: 600,
+    lat: 37.57,
+    lng: 127.01,
+    isSelfEstimated: false,
+  },
+];
+
+describe("Page provider toggle [S4-1][S4-2]", () => {
+  beforeEach(() => {
+    useGeolocationMock.mockReset();
+    useStationsMock.mockReset();
+    localStorage.setItem(MAP_PROVIDER_STORAGE_KEY, "kakao");
+  });
+
+  it("[S4-1] switches the map to naver while keeping the list and selection unchanged", async () => {
+    const user = userEvent.setup();
+    useGeolocationMock.mockReturnValue({
+      status: "success",
+      coords: { lat: 37.56, lng: 127.0 },
+      retry: vi.fn(),
+    });
+    useStationsMock.mockReturnValue({ status: "success", stations: TOGGLE_TEST_STATIONS, error: null });
+
+    render(<Page />);
+
+    expect(await screen.findByTestId("map-view-mock")).toHaveAttribute("data-provider", "kakao");
+
+    await user.click(screen.getByText("2위주유소"));
+    expect(screen.getByTestId("map-view-mock")).toHaveAttribute("data-selected-id", "2");
+
+    await user.click(screen.getByRole("radio", { name: "네이버지도" }));
+
+    expect(screen.getByTestId("map-view-mock")).toHaveAttribute("data-provider", "naver");
+    expect(screen.getByTestId("map-view-mock")).toHaveAttribute("data-selected-id", "2");
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.getByText("2위주유소")).toBeInTheDocument();
+  });
+
+  it("[S4-2] persists the newly toggled provider to localStorage", async () => {
+    const user = userEvent.setup();
+    useGeolocationMock.mockReturnValue({
+      status: "success",
+      coords: { lat: 37.56, lng: 127.0 },
+      retry: vi.fn(),
+    });
+    useStationsMock.mockReturnValue({ status: "success", stations: TOGGLE_TEST_STATIONS, error: null });
+
+    render(<Page />);
+    await screen.findByTestId("map-view-mock");
+
+    await user.click(screen.getByRole("radio", { name: "네이버지도" }));
+
+    expect(localStorage.getItem(MAP_PROVIDER_STORAGE_KEY)).toBe("naver");
   });
 });
