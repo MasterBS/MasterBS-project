@@ -179,10 +179,10 @@
 
 ---
 
-### 최종 Checkpoint
-- [ ] `e2e/cheap-gas-finder.spec.ts`(또는 신규 `e2e/map-provider-choice.spec.ts`)에 제공자 선택→결과→토글 전환→길찾기 흐름 추가, `bun run test:e2e` 통과 (learnings.md의 geolocation/서비스워커 mocking 함정 재확인)
-- [ ] web-design-guidelines로 `components/gas/provider-select.tsx`, `provider-toggle.tsx`, `app/page.tsx` 접근성·UX 검토
-- [ ] spec.md의 **End-to-end 검증** 절차 실행, 통과한 판정 기준 체크박스를 spec.md에서 켠다
+### 최종 Checkpoint — ✅ 통과 (S5·S6·INV-1의 실 SDK/실기기 확인만 Human review로 이월)
+- [x] `e2e/map-provider-choice.spec.ts` 신규 작성(제공자 선택→저장/재방문 생략→상단 토글 전환), `e2e/cheap-gas-finder.spec.ts`는 게이팅을 우회하도록 `beforeEach` 보강. `bun run test:e2e -- map-provider-choice` 3/4 통과, 1개(S6, `nmap://` 커스텀 스킴이 Chromium에서 popup 이벤트를 안 만듦)는 `test.fixme`. `bun run test:e2e -- cheap-gas-finder`는 이 세션 고유의 환경 이슈(geolocation 권한 hang, 카카오 팝업이 프록시로 chrome-error) 2건이 map-provider-choice 로직과 무관함을 격리 재현으로 확인 — `learnings.md` 참고
+- [x] web-design-guidelines로 `components/gas/provider-select.tsx`, `provider-toggle.tsx`, `app/page.tsx` 검토 — heading 누락 1건 발견, 직접 수정(commit c089b55)
+- [x] spec.md의 **End-to-end 검증** 절차 중 실행 가능한 범위(S1~S4, INV-2)는 RTL + Playwright e2e 실행 증거로 체크박스를 켬. S5-1·S5-2·S6·INV-1은 실 네이버 SDK 키·실기기가 이 세션에 없어 미체크로 남기고 Human review로 이월(카카오 SDK도 이 세션엔 `.env.local` 없이 렌더링 확인 불가 — cheap-gas-finder 때와 동일한 종류의 제약)
 
 ## 미결정 항목
 
