@@ -56,7 +56,7 @@
 
 ## Tasks
 
-### Task 1: 네이버 지도 렌더링 컴포넌트
+### Task 1: 네이버 지도 렌더링 컴포넌트 — ✅ 완료
 
 - **담당 판정 기준**: S5-1, S5-2, INV-1
 - **크기**: M
@@ -74,7 +74,7 @@
 
 ---
 
-### Task 2: 제공자 타입·설정·저장 상태 훅
+### Task 2: 제공자 타입·설정·저장 상태 훅 — ✅ 완료
 
 - **담당 판정 기준**: 없음 (지원 Task — S1~S4가 공유하는 저장·상태 로직의 기반). 테스트 이름은 근거 ID가 없으므로 `[provider]` 태그로 식별
 - **크기**: S
@@ -90,11 +90,11 @@
 
 ---
 
-### Checkpoint: Tasks 1~2 이후
-- [ ] 모든 테스트 통과: `bun run test`
-- [ ] 빌드 성공: `bun run build`
-- [ ] 커버리지 검사: `scripts/spec-coverage.sh map-provider-choice --tests`
-- [ ] 네이버 지도 컴포넌트가 fake SDK 기준으로 카카오와 동등하게 동작(INV-1), 제공자 상태 훅이 독립적으로 동작
+### Checkpoint: Tasks 1~2 이후 — ✅ 통과
+- [x] 모든 테스트 통과: `bun run test` (15 files, 53 passed)
+- [x] 빌드 성공: `bun run build`
+- [x] 커버리지 검사: `scripts/spec-coverage.sh map-provider-choice`(plan 배정만, `--tests`는 뒤 Task들이 아직 안 끝나 이 시점엔 구조적으로 통과 불가 — `learnings.md` 참고). Task 1·2 담당 ID(S5-1, S5-2, INV-1)만 별도 grep으로 인용 확인 완료
+- [x] 네이버 지도 컴포넌트가 fake SDK 기준으로 카카오와 동등하게 동작(INV-1), 제공자 상태 훅이 독립적으로 동작
 
 ---
 
