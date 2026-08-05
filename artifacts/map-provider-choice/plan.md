@@ -70,7 +70,7 @@
   - `lib/naver-loader.ts`: `loadNaverMaps(clientId): Promise<Naver>` (스크립트 1회 로드, 카카오 로더와 동일한 caching 패턴)
   - `components/gas/naver-map-view.tsx`: `map-view.tsx`와 동일 props(`appKey`, `currentLocation`, `stations`, `selectedId`) — 현재 위치 마커 + 주유소 핀 + `fitBounds` 자동 줌 + 선택 항목 강조
   - `components/gas/naver-map-view.test.tsx`
-- **검증**: `bun run test -- naver-map-view` — fake `window.naver`로 [S5-1] 현재 위치·주유소 마커 개수와 `fitBounds` 호출 인자(모든 좌표 포함) 확인, [S5-2] `selectedId` 변경 시 해당 마커 아이콘·zIndex가 강조로 바뀌는지 확인, [INV-1] 카카오 버전(`map-view.test.tsx`)과 동일한 마커·강조·자동줌 동작을 검증하는 테스트 케이스 구조가 대응되는지 대조. `bun run typecheck`. 실 SDK 시각 검증(NCP 키 발급 후)은 Browser MCP로 1회 확인, 증거 `artifacts/map-provider-choice/evidence/task-1-map-render.md`
+- **검증**: `bun run test -- naver-map-view` — fake `window.naver`로 [S5-1] 현재 위치·주유소 마커 개수와 `fitBounds` 호출 인자(모든 좌표 포함) 확인, [S5-2] `selectedId` 변경 시 해당 마커 아이콘·zIndex가 강조로 바뀌는지 확인, [INV-1] 카카오 버전(`map-view.test.tsx`)과 동일한 마커·강조·자동줌 동작을 검증하는 테스트 케이스 구조가 대응되는지 대조. `bun run typecheck`. **실 SDK 시각 검증은 이 Task에서 하지 않는다** — `NaverMapView`는 이 시점에 어떤 라우트에도 연결되어 있지 않아(provider 게이팅은 Task 3, dispatcher는 Task 4, 결과 화면 배선은 Task 5) 브라우저로 볼 방법이 없다. Checkpoint "Tasks 3~5 이후"에서 실제 페이지에 연결된 뒤 한 번에 확인한다
 
 ---
 
@@ -100,7 +100,7 @@
 
 ### Task 3: 제공자 선택 화면 + 앱 진입 게이팅
 
-- **담당 판정 기준**: S1-1, S1-2, S2-1, S2-2, S3
+- **담당 판정 기준**: S1-1, S1-2, S2-1, S2-2, S3 (S3의 "지도는 저장된 제공자로 렌더링된다" 부분은 Task 5에서 `MapView`에 provider가 실제로 연결된 뒤 완성됨 — 이 Task는 "선택 화면 생략 + 기존 흐름 진입"만 증명)
 - **크기**: M
 - **의존성**: Task 2 (`useMapProvider` 훅)
 - **참조**:
@@ -119,7 +119,7 @@
 
 - **담당 판정 기준**: 없음 (지원 Task — S4·INV-1·INV-2가 딛고 서는 기반). 테스트 이름은 `[map-view]` 태그로 식별
 - **크기**: M
-- **의존성**: Task 1 (`NaverMapView`)
+- **의존성**: Task 1 (`NaverMapView`), Task 2 (`MapProvider` 타입)
 - **참조**: 없음 (기존 `map-view.tsx`·`naver-map-view.tsx` 재사용)
 - **구현 대상**:
   - `components/gas/map-view.tsx`의 기존 카카오 전용 구현을 `components/gas/kakao-map-view.tsx`로 이름 변경(내용 변경 없음), `map-view.test.tsx` → `kakao-map-view.test.tsx`로 함께 이동
@@ -150,6 +150,7 @@
 - [ ] 빌드 성공: `bun run build`
 - [ ] 커버리지 검사: `scripts/spec-coverage.sh map-provider-choice --tests`
 - [ ] 앱 진입 → 제공자 선택 → 결과 화면 → 상단 토글 전환까지 end-to-end로 동작(S1~S5)
+- [ ] Browser MCP로 실 SDK 시각 확인 1회: `bun run dev` → 제공자 선택 화면에서 "네이버지도" 선택(또는 상단 토글로 전환) → 실제 네이버 지도(현재 위치 마커, 주유소 핀, 자동 줌)가 렌더링되는지 확인(Task 1이 미룬 검증, S5-1·S5-2), 카카오맵도 동일하게 여전히 렌더링되는지 함께 확인(INV-1). 증거 `artifacts/map-provider-choice/evidence/checkpoint-3-5.png`. NCP 콘솔 키·도메인 미설정으로 실패하면 Task 1 참조의 학습(도메인 등록)부터 확인
 
 ---
 
