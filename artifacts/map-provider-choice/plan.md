@@ -154,7 +154,7 @@
 
 ---
 
-### Task 6: 카카오/네이버 길찾기 URL 빌더 + 버튼 배선
+### Task 6: 카카오/네이버 길찾기 URL 빌더 + 버튼 배선 — ✅ 완료 (실 새 탭 오픈 확인만 이월)
 
 - **담당 판정 기준**: S6, INV-2
 - **크기**: M
@@ -168,14 +168,14 @@
   - `components/gas/station-list.tsx` (Modify): `provider: MapProvider` prop 추가, "길찾기" 버튼 클릭 시 provider에 따라 `buildKakaoRouteUrl` 또는 `buildNaverRouteUrl` 선택해 `window.open`
   - `components/gas/station-list.test.tsx` (Modify)
   - `app/page.tsx` (Modify): `StationList`에 현재 `provider` 전달
-- **검증**: `bun run test -- directions station-list` — [S6] `buildNaverRouteUrl`이 `slat`/`slng`/`dlat`/`dlng`/`appname` 파라미터를 정확히 생성, `provider="naver"`일 때 길찾기 버튼이 네이버 URL로 `window.open` 호출, [INV-2] `provider="kakao"`일 때는 카카오 URL만 열리고 네이버 URL은 호출되지 않음(그 역도 확인). `bun run typecheck`. Browser MCP로 실제 새 탭 오픈 1회 확인(카카오 기존 패턴과 동일), 증거 `artifacts/map-provider-choice/evidence/task-6.png`
+- **검증**: `bun run test -- directions station-list` — [S6] `buildNaverRouteUrl`이 `slat`/`slng`/`dlat`/`dlng`/`appname` 파라미터를 정확히 생성, `provider="naver"`일 때 길찾기 버튼이 네이버 URL로 `window.open` 호출, [INV-2] `provider="kakao"`일 때는 카카오 URL만 열리고 네이버 URL은 호출되지 않음(그 역도 확인). `bun run typecheck`. **(이월)** Browser MCP로 실제 새 탭 오픈 확인은 이 세션에 브라우저 자동화 도구가 없어 수행 불가 — 사용자가 로컬에서 `nmap://` 딥링크가 실제로 네이버지도 앱(또는 미설치 시 무동작/스토어 이동)을 여는지 모바일 환경에서 확인 필요. 데스크톱 웹 폴백은 plan.md 미결정 항목대로 아직 없음(모바일 앱 딥링크만 구현)
 
 ---
 
-### Checkpoint: Task 6 이후
-- [ ] 모든 테스트 통과: `bun run test`
-- [ ] 빌드 성공: `bun run build`
-- [ ] 커버리지 검사: `scripts/spec-coverage.sh map-provider-choice --tests`
+### Checkpoint: Task 6 이후 — ✅ 통과
+- [x] 모든 테스트 통과: `bun run test` (18 files, 69 passed)
+- [x] 빌드 성공: `bun run build`
+- [x] 커버리지 검사: `scripts/spec-coverage.sh map-provider-choice --tests` — 전체 통과("모든 판정 기준이 plan에 배정되고 테스트에 인용되어 있다"), `INV-2` 인용을 이 feature 소유 파일(`station-list.test.tsx`)에서 직접 grep으로 재확인
 
 ---
 

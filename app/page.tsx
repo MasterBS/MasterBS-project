@@ -130,6 +130,7 @@ function ResultsPage({
                     selectedId={selectedId}
                     onSelect={setSelectedId}
                     currentLocation={geolocation.coords}
+                    provider={provider}
                   />
                 </div>
               </div>

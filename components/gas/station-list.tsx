@@ -1,8 +1,9 @@
 import { NavigationIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { buildKakaoRouteUrl, type LatLng } from "@/lib/directions";
+import { buildKakaoRouteUrl, buildNaverRouteUrl, type LatLng } from "@/lib/directions";
 import { cn } from "@/lib/utils";
+import type { MapProvider } from "@/types/map-provider";
 import type { Station } from "@/types/station";
 
 function formatPrice(price: number): string {
@@ -21,11 +22,13 @@ export function StationList({
   selectedId,
   onSelect,
   currentLocation,
+  provider,
 }: {
   stations: Station[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   currentLocation: LatLng;
+  provider: MapProvider;
 }) {
   return (
     <ul className="flex flex-col gap-2">
@@ -61,7 +64,13 @@ export function StationList({
                     variant="outline"
                     size="sm"
                     className="mt-1"
-                    onClick={() => window.open(buildKakaoRouteUrl(currentLocation, station), "_blank")}
+                    onClick={() => {
+                      const url =
+                        provider === "naver"
+                          ? buildNaverRouteUrl(currentLocation, station, station.name)
+                          : buildKakaoRouteUrl(currentLocation, station);
+                      window.open(url, "_blank");
+                    }}
                   >
                     <NavigationIcon data-icon="inline-start" aria-hidden="true" />
                     길찾기
