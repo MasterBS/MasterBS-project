@@ -145,12 +145,12 @@
 
 ---
 
-### Checkpoint: Tasks 3~5 이후
-- [ ] 모든 테스트 통과: `bun run test`
-- [ ] 빌드 성공: `bun run build`
-- [ ] 커버리지 검사: `scripts/spec-coverage.sh map-provider-choice --tests`
-- [ ] 앱 진입 → 제공자 선택 → 결과 화면 → 상단 토글 전환까지 end-to-end로 동작(S1~S5)
-- [ ] Browser MCP로 실 SDK 시각 확인 1회: `bun run dev` → 제공자 선택 화면에서 "네이버지도" 선택(또는 상단 토글로 전환) → 실제 네이버 지도(현재 위치 마커, 주유소 핀, 자동 줌)가 렌더링되는지 확인(Task 1이 미룬 검증, S5-1·S5-2), 카카오맵도 동일하게 여전히 렌더링되는지 함께 확인(INV-1). 증거 `artifacts/map-provider-choice/evidence/checkpoint-3-5.png`. NCP 콘솔 키·도메인 미설정으로 실패하면 Task 1 참조의 학습(도메인 등록)부터 확인
+### Checkpoint: Tasks 3~5 이후 — ✅ 통과 (실 SDK 시각 확인만 Human review로 이월)
+- [x] 모든 테스트 통과: `bun run test` (18 files, 65 passed)
+- [x] 빌드 성공: `bun run build`
+- [x] 커버리지 검사: `scripts/spec-coverage.sh map-provider-choice --tests` — `INV-2`(Task 6 담당)만 미인용으로 정상. S1-1·S1-2·S2-1·S2-2·S3·S4-1·S4-2·S5-1·S5-2는 이 feature 자신의 테스트 파일(`provider-select.test.tsx`, `app/page.test.tsx`, `naver-map-view.test.tsx`)에서 직접 grep으로 재확인(코드베이스 전역 grep이 cheap-gas-finder의 동일 번호 ID와 헷갈릴 수 있어 — `learnings.md` 참고)
+- [x] 앱 진입 → 제공자 선택 → 결과 화면 → 상단 토글 전환까지 end-to-end로 동작(S1~S5, RTL 기준)
+- [ ] (이월) Browser MCP로 실 SDK 시각 확인: 이 세션에는 브라우저 자동화 도구가 연결되어 있지 않고 `.env.local`(실 `NEXT_PUBLIC_KAKAO_MAP_KEY`/`NEXT_PUBLIC_NAVER_MAP_KEY`)도 없어 이 세션에서 수행 불가. 사용자가 로컬에서 두 키를 `.env.local`에 넣고(`.env.example` 참고) `bun run dev` 후 제공자 선택 화면 → 네이버지도 선택 → 실제 지도(현재 위치 마커, 주유소 핀, 자동 줌) 렌더링, 상단 토글로 카카오맵 전환까지 눈으로 확인 필요(S5-1·S5-2·INV-1). NCP 콘솔 키·도메인 미설정으로 실패하면 Task 1 참조의 학습(Web 서비스 URL 등록) 참고
 
 ---
 
