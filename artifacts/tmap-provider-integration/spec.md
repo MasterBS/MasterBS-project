@@ -37,7 +37,7 @@
 - **Given**: 설정에서 티맵으로 전환한 상태
 - **When**: 페이지를 새로고침한다
 - **Then**
-  - [ ] S3 새로고침 후에도 지도 표시와 길찾기 링크 모두 티맵으로 유지된다
+  - [x] S3 새로고침 후에도 지도 표시와 길찾기 링크 모두 티맵으로 유지된다 (Playwright e2e로 확인, `e2e/map-provider-selection.spec.ts` — SDK 스크립트를 `page.route()`로 스텁, 실 appKey 없이 실행)
 
 ### S4. 티맵 SDK 로드 실패
 - **Given**: 티맵 SDK 로드가 실패하는 상태(키 미설정, 도메인 미등록 등), provider는 티맵

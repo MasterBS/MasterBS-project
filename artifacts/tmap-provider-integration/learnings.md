@@ -70,3 +70,19 @@ date: 2026-08-06
 
 **증거**: `bun run lint` 실패 로그(`hooks/use-geolocation.ts:41`, `hooks/use-map-provider.ts:17`, `hooks/use-stations.ts:26` 등 4 errors 2 warnings), `git show b00e809 -- hooks/use-map-provider.ts`(내 diff는 `isMapProvider` 함수 한 줄뿐), `git log --oneline -- hooks/use-map-provider.ts`(위반이 있는 effect는 `562baea`, map-provider-selection feature 커밋에서 도입됨).
 
+
+---
+
+---
+triggers: [spec-coverage.sh, feature-prefix 태그, "[tmap-provider-integration", 테스트 미인용, bare 태그, ID 충돌, INV-2 오탐]
+status: verified
+scope: this-repo (scripts/spec-coverage.sh 현재 정규식, feature-prefix 태그 컨벤션)
+date: 2026-08-06
+---
+## feature-prefix 태그(`[tmap-provider-integration S1-1]`)만 쓰면 `scripts/spec-coverage.sh --tests`가 그 ID를 "미인용"으로 오판한다 — bare 태그를 항상 나란히 붙여야 한다
+
+**지시문**: 이 저장소의 다른 feature와 spec ID(S1, S2, INV-1 등)가 겹칠 위험이 있어 `[tmap-provider-integration S1-1]`처럼 feature-prefix 태그를 쓰기로 했다면(plan.md 아키텍처 결정 참고), **반드시 bare 태그(`[S1-1]`)를 같은 `it()`/`test()` 이름 안에 나란히 추가**한다 — 예: `it("[S1-1][tmap-provider-integration S1-1] ...")`. `scripts/spec-coverage.sh`의 `--tests` 검사는 `grep -rqE "\[$id(-[0-9]+)?\]"`로, `[`가 ID 바로 앞에 와야 매치된다. `[tmap-provider-integration S1-1]`처럼 `[` 다음에 feature 이름이 먼저 오면 정규식이 매치하지 못해 실제로 테스트가 있어도 "테스트 미인용"으로 보고한다. feature-prefix만으로는 이 스크립트를 통과시키지 못하고, disambiguation(사람이 읽을 때 어느 feature 소속인지 구분) 목적으로만 쓸 수 있다.
+
+**에피소드**: `components/gas/map-view.test.tsx`의 INV-1 테스트는 이미 `[INV-1][tmap-provider-integration INV-1]`처럼 두 태그를 나란히 썼는데(전 Task에서 이렇게 작성됨), `lib/directions.test.ts`의 INV-2 테스트는 `[tmap-provider-integration S2][tmap-provider-integration INV-2]`처럼 feature-prefix만 썼다. `scripts/spec-coverage.sh tmap-provider-integration --tests`를 돌리니 다른 9개 ID는 전부 통과했는데 INV-2만 "테스트 미인용"으로 실패했다 — 확인해보니 나머지 9개는 사실 이 feature의 태그 형식과 무관하게, `cheap-gas-finder`·`map-provider-selection`의 **기존 bare 태그**(예: `app/page.test.tsx`의 `[S1-1]`, `hooks/use-map-provider.test.ts`의 `[S3]` 등, 전혀 다른 판정 기준)가 우연히 정규식에 매치되어 "커버됨"으로 보인 것이었다(`map-provider-selection/learnings.md:7`에 기록된 것과 동일한 종류의 우연한 매치). INV-2만 다른 feature에 동일 이름의 bare 태그가 전혀 없어서, 진짜로 이 feature의 테스트가 인용되지 않았다는 사실이 드러난 것. `[INV-2][tmap-provider-integration INV-2]`로 bare 태그를 추가하자 통과했다.
+
+**증거**: `for id in S1-1 S1-2 S1-3 S2 S3 S4-1 S4-2 S5 INV-1 INV-2; do grep -rlE "\[$id(-[0-9]+)?\]" ...; done` 실행 결과 — INV-2만 매치 파일 0개, 나머지는 전부 `cheap-gas-finder`/`map-provider-selection` 소속 파일에서 매치(`app/page.test.tsx`, `hooks/use-map-provider.test.ts`(구 map-provider-selection 부분), `e2e/cheap-gas-finder.spec.ts` 등). `lib/directions.test.ts:127`을 `[INV-2][tmap-provider-integration INV-2]`로 수정한 뒤 `scripts/spec-coverage.sh tmap-provider-integration --tests` → "커버리지 OK"로 전환.

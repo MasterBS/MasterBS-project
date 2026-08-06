@@ -124,7 +124,7 @@ describe("openRoute [네이버지도 길찾기 앱 딥링크 폴백]", () => {
     expect(openSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("[tmap-provider-integration S2][tmap-provider-integration INV-2] tmap: opens the tmap route URL once and schedules no web-fallback timer", () => {
+  it("[tmap-provider-integration S2][INV-2][tmap-provider-integration INV-2] tmap: opens the tmap route URL once and schedules no web-fallback timer", () => {
     const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
 
     openRoute("tmap", origin, dest, "테스트주유소");
