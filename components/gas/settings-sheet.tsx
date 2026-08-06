@@ -15,7 +15,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MAP_PROVIDER_LABELS } from "@/config/map-provider";
 import type { MapProvider } from "@/types/map-provider";
 
-const PROVIDER_OPTIONS: MapProvider[] = ["kakao", "naver"];
+const PROVIDER_OPTIONS: MapProvider[] = ["kakao", "naver", "tmap"];
 
 export function SettingsSheet({
   provider,

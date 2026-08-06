@@ -20,6 +20,29 @@ describe("SettingsSheet [S1-1][S6]", () => {
     expect(screen.getByRole("radio", { name: "카카오맵" })).toHaveAttribute("aria-checked", "false");
   });
 
+  it("[tmap-provider-integration S5] shows all three provider options including 티맵, with the current selection reflected", async () => {
+    const user = userEvent.setup();
+    render(<SettingsSheet provider="tmap" onProviderChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "설정" }));
+
+    expect(await screen.findByRole("radio", { name: "카카오맵" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "네이버지도" })).toBeInTheDocument();
+    const tmapOption = screen.getByRole("radio", { name: "티맵" });
+    expect(tmapOption).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("[tmap-provider-integration S5] calls onProviderChange with tmap when the user picks it", async () => {
+    const user = userEvent.setup();
+    const onProviderChange = vi.fn();
+    render(<SettingsSheet provider="naver" onProviderChange={onProviderChange} />);
+
+    await user.click(screen.getByRole("button", { name: "설정" }));
+    await user.click(await screen.findByRole("radio", { name: "티맵" }));
+
+    expect(onProviderChange).toHaveBeenCalledWith("tmap");
+  });
+
   it("[S1-1] calls onProviderChange when the user picks a different provider", async () => {
     const user = userEvent.setup();
     const onProviderChange = vi.fn();
