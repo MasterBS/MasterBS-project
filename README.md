@@ -67,6 +67,7 @@ Claude Code hooks 기반 자동 품질 게이트 (`.claude/settings.json`)
 - `OPINET_API_KEY=F260723461`
 - `NEXT_PUBLIC_KAKAO_MAP_KEY=<your-kakao-map-key>`
 - `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID=<your-ncp-client-id>` (NCP 콘솔 > AI·NAVER API > Maps > Web Dynamic Map 활성화 후 발급, 서비스 URL에 로컬/배포 도메인 등록 필요)
+- `NEXT_PUBLIC_TMAP_APP_KEY=<your-tmap-app-key>` (openapi.sk.com 콘솔에서 앱 생성 후 TMAP 상품 등록, appKey 발급)
 
 로컬 개발 시에는 `.env.local` 파일을 생성하고 `.env.example`를 참조할 수 있습니다.
 ## Claude Code 워크플로우
