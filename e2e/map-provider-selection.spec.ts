@@ -144,6 +144,30 @@ test("[tmap-provider-integration S3] 티맵으로 전환 후 새로고침해도 
   await tmapRequest;
 });
 
+test("[tmap-provider-integration S4-1][tmap-provider-integration S4-2] 티맵 SDK 로드가 실패하면 에러 안내가 뜨고 리스트는 계속 보인다", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation(CURRENT_LOCATION);
+  await stubStations(page);
+  await page.route("**/apis.openapi.sk.com/tmap/jsv2**", async (route) => {
+    await route.fulfill({ status: 500, body: "sdk load failed" });
+  });
+
+  await page.goto("/");
+  await expect(page.getByRole("listitem")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "설정" }).click();
+  await page.getByRole("radio", { name: "티맵" }).click();
+
+  await expect(page.getByText("지도를 불러오지 못했어요. 다시 시도해주세요")).toBeVisible();
+  await expect(page.getByRole("button", { name: "다시 시도" })).toBeVisible();
+  // 지도가 실패해도 리스트(순위·가격·거리)는 정상적으로 계속 표시된다 (S4-2)
+  await expect(page.getByRole("listitem")).toHaveCount(1);
+  await expect(page.getByText("테스트주유소")).toBeVisible();
+});
+
 test("[네이버지도 길찾기 웹 폴백] 앱 딥링크가 반응 없으면 새 탭이 네이버지도 웹으로 넘어간다", async ({
   page,
   context,
