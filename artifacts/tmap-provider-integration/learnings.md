@@ -56,3 +56,17 @@ date: 2026-08-06
 
 **증거**: `curl -sS -o /dev/null -w "HTTP %{http_code}" https://map.naver.com/p/directions/-/-/-/car` → tunnel 403, `$HTTPS_PROXY/__agentproxy/status`의 `recentRelayFailures`에 `map.naver.com:443` `connect_rejected` 2건(2026-08-06T11:10), `bun run test:e2e -- map-provider-selection` 로그에서 이 테스트만 실패(5/6 통과, tmap 신규 케이스 2개는 모두 통과).
 
+---
+triggers: [react-hooks/set-state-in-effect, bun run lint 실패, use-map-provider.ts eslint, use-stations.ts eslint, use-geolocation.ts eslint]
+status: verified
+scope: this-repo (Step 4 code review 판단 — /code-review 스킬이 이 환경에 없어 수동 검토로 대체)
+date: 2026-08-06
+---
+## `bun run lint`의 `react-hooks/set-state-in-effect` 4건은 이 feature 이전부터 있던 기존 위반이라 기각한다
+
+**지시문**: `bun run lint`가 `hooks/use-geolocation.ts`, `hooks/use-map-provider.ts`, `hooks/use-stations.ts`에서 "Calling setState synchronously within an effect" 에러를 내면, tmap-provider-integration이 원인인지 먼저 `git show <내 커밋> -- <파일>`로 확인한다 — `use-map-provider.ts`는 이번 feature에서 `isMapProvider` 가드 한 줄만 바꿨고 위반이 있는 effect 본문(`setProviderState(stored)`)은 건드리지 않았다. `use-geolocation.ts`/`use-stations.ts`는 이번 feature가 전혀 손대지 않은 파일이다. `git stash`(working tree가 이미 clean이라 스택할 것도 없음) 확인 결과로도 pre-existing임이 확인된다.
+
+**에피소드**: 이 환경에는 `/code-review` 스킬이 설치돼 있지 않아(`.claude/skills/`에 없음) execute-plan Step 4를 수동 검토로 대체했다. `bun run lint` 전체 실행 중 이 4건을 발견했으나, `git show b00e809 -- hooks/use-map-provider.ts`로 diff를 확인해 내가 건드린 줄이 아님을 확인했고, 나머지 두 파일은 이번 feature의 "영향 받은 파일" 목록(plan.md)에도 없다. spec.md 판정 기준과 무관한 pre-existing 기술 부채이므로 고치지 않고 기각했다 — 고쳤다면 feature 범위를 벗어나는 별도 diff가 됐을 것이다.
+
+**증거**: `bun run lint` 실패 로그(`hooks/use-geolocation.ts:41`, `hooks/use-map-provider.ts:17`, `hooks/use-stations.ts:26` 등 4 errors 2 warnings), `git show b00e809 -- hooks/use-map-provider.ts`(내 diff는 `isMapProvider` 함수 한 줄뿐), `git log --oneline -- hooks/use-map-provider.ts`(위반이 있는 effect는 `562baea`, map-provider-selection feature 커밋에서 도입됨).
+
