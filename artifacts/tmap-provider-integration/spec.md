@@ -50,7 +50,7 @@
 - **Given**: 앱이 로드된 상태 (현재 provider와 무관)
 - **When**: 설정 진입점을 연다
 - **Then**
-  - [ ] S5 "카카오맵", "네이버지도", "티맵" 세 옵션이 모두 보이고, 현재 선택된 provider가 표시된다
+  - [x] S5 "카카오맵", "네이버지도", "티맵" 세 옵션이 모두 보이고, 현재 선택된 provider가 표시된다 (컴포넌트 테스트로 확인, `components/gas/settings-sheet.test.tsx`)
 
 ## 불변 규칙
 

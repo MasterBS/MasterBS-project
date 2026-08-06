@@ -104,7 +104,7 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 
 ---
 
-### Task 3: 설정 라벨(config)과 저장 훅(hooks)에 티맵을 등록해 선택이 저장·지속된다
+### Task 3: 설정 라벨(config)과 저장 훅(hooks)에 티맵을 등록해 선택이 저장·지속된다 — ✅ 완료 (commit b00e809, S3 spec 체크박스는 Task 6의 페이지 배선 완료 후 켠다)
 
 - **담당 판정 기준**: S3 (체크박스는 Task 6의 페이지 배선 완료 후 켠다 — 훅 단위 검증만 이 Task에서 수행)
 - **크기**: M (3개 파일)
@@ -120,7 +120,7 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 
 ---
 
-### Task 4: 설정 시트에 티맵을 세 번째 옵션으로 노출한다
+### Task 4: 설정 시트에 티맵을 세 번째 옵션으로 노출한다 — ✅ 완료 (commit 6fb78e2)
 
 - **담당 판정 기준**: S5
 - **크기**: S (2개 파일)
@@ -135,11 +135,11 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 
 ---
 
-### Checkpoint: Tasks 3~4 이후
-- [ ] 모든 테스트 통과: `bun run test`
-- [ ] 빌드 성공: `bun run build`
-- [ ] 커버리지 검사 통과: `scripts/spec-coverage.sh tmap-provider-integration --tests` (S3, S5가 feature-prefix 태그(`[tmap-provider-integration S3]`, `[tmap-provider-integration S5]`)로 인용됐는지 직접 확인 — 이 저장소는 동일 ID가 다른 feature 테스트에도 bare로 존재해 스크립트 요약만으로는 거짓 커버리지를 놓칠 수 있음)
-- [ ] 설정 시트가 세 옵션을 보여주고, `useMapProvider` 훅이 `"tmap"` 저장·복원을 독립적으로 만족함이 컴포넌트·훅 테스트로 확인됨
+### Checkpoint: Tasks 3~4 이후 — ✅ 완료 (build는 Task 6 이후로 이연 — [learnings.md](learnings.md))
+- [x] 모든 테스트 통과: `bun run test` (94/94)
+- [ ] 빌드 성공: `bun run build` — Task 6(페이지에 `tmapAppKey` 배선) 전까지 구조적으로 불가능해 최종 체크포인트로 이연 (learnings.md 참고)
+- [x] 커버리지 검사 통과: `scripts/spec-coverage.sh tmap-provider-integration --tests` (S3, S5는 `[tmap-provider-integration S3]`/`[tmap-provider-integration S5]`로 인용됨을 `grep -rlE` 직접 확인. INV-2만 미인용으로 남음 — Task 5에서 해소 예정, 계획대로)
+- [x] 설정 시트가 세 옵션을 보여주고, `useMapProvider` 훅이 `"tmap"` 저장·복원을 독립적으로 만족함이 컴포넌트·훅 테스트로 확인됨
 
 ---
 
