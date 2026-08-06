@@ -46,6 +46,17 @@ async function stubMapSdks(page: Page) {
         Size: function(){} } };`,
     });
   });
+  await page.route("**/apis.openapi.sk.com/tmap/jsv2**", async (route) => {
+    await route.fulfill({
+      contentType: "application/javascript",
+      body: `window.Tmapv2 = {
+        Map: function(){ this.fitBounds=function(){}; this.setCenter=function(){}; },
+        LatLng: function(lat,lng){ this.lat=()=>lat; this.lng=()=>lng; },
+        LatLngBounds: function(){ this.extend=function(){}; },
+        Marker: function(){ this.setMap=function(){}; },
+        Size: function(){} };`,
+    });
+  });
 }
 
 test("[S6] 설정 진입점은 위치 권한이 거부된 상태에서도 항상 보인다", async ({ page }) => {
@@ -91,6 +102,46 @@ test("[S4] 새로고침해도 선택한 provider가 유지된다", async ({ page
   const kakaoRequest = page.waitForRequest("**/dapi.kakao.com/v2/maps/sdk.js**");
   await page.reload();
   await kakaoRequest;
+});
+
+test("[tmap-provider-integration S1-1] 설정에서 티맵을 선택하면 새로고침 없이 즉시 티맵 SDK가 로드된다", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation(CURRENT_LOCATION);
+  await stubStations(page);
+  await stubMapSdks(page);
+
+  await page.goto("/");
+  await expect(page.getByRole("listitem")).toHaveCount(1);
+
+  const tmapRequest = page.waitForRequest("**/apis.openapi.sk.com/tmap/jsv2**");
+  await page.getByRole("button", { name: "설정" }).click();
+  await page.getByRole("radio", { name: "티맵" }).click();
+  await tmapRequest;
+  // 설정 화면이 닫혔는지 확인 (S1-1)
+  await expect(page.getByRole("radio", { name: "티맵" })).not.toBeVisible();
+});
+
+test("[tmap-provider-integration S3] 티맵으로 전환 후 새로고침해도 티맵으로 유지된다", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation(CURRENT_LOCATION);
+  await stubStations(page);
+  await stubMapSdks(page);
+
+  await page.goto("/");
+  await expect(page.getByRole("listitem")).toHaveCount(1);
+
+  await page.getByRole("button", { name: "설정" }).click();
+  await page.getByRole("radio", { name: "티맵" }).click();
+
+  const tmapRequest = page.waitForRequest("**/apis.openapi.sk.com/tmap/jsv2**");
+  await page.reload();
+  await tmapRequest;
 });
 
 test("[네이버지도 길찾기 웹 폴백] 앱 딥링크가 반응 없으면 새 탭이 네이버지도 웹으로 넘어간다", async ({
