@@ -58,7 +58,7 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 
 ## Tasks
 
-### Task 1: 티맵 SDK 로더·타입과 TmapMapView를 만든다
+### Task 1: 티맵 SDK 로더·타입과 TmapMapView를 만든다 — ✅ 완료 (commit f1efbcd, 스크립트 URL·`window.Tmapv2` 네임스페이스는 plan.md 추정과 달라 재확인 후 반영 — [learnings.md](learnings.md))
 
 - **담당 판정 기준**: 없음 (기반 인프라 — S1-2·S1-3·S4-1·S4-2·INV-1이 Task 2에서 이 위에 얹힌다)
 - **크기**: M (5개 파일 + 문서 2개)
@@ -80,7 +80,7 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 
 ---
 
-### Task 2: MapView가 3-way 분기하도록 확장해 티맵 지도를 렌더링·에러 처리한다
+### Task 2: MapView가 3-way 분기하도록 확장해 티맵 지도를 렌더링·에러 처리한다 — ✅ 완료 (commit 8b01cb1, 전역 `bun run typecheck`/`build`는 Task 6 페이지 배선 전까지 구조적으로 빨간불 — [learnings.md](learnings.md))
 
 - **담당 판정 기준**: S1-2, S1-3, S4-1, S4-2, INV-1
 - **크기**: M (3개 파일)
