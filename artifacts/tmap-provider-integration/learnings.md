@@ -27,3 +27,32 @@ date: 2026-08-06
 **에피소드**: Task 2(`components/gas/map-view.tsx`에 `tmapAppKey` 필수 prop 추가) 직후 `bun run typecheck`를 돌리자 `app/page.tsx`(tmapAppKey 미전달, Task 6 소관)와 `config/map-provider.ts`(`MAP_PROVIDER_LABELS`에 `tmap` 키 없음, Task 3 소관)에서 각각 타입 에러가 났다. plan.md의 Task 2 검증 항목은 `bun run test -- map-view`와 `bun run typecheck`만 명시했지만, 후자는 전역 검사라 이 두 미완료 파일 때문에 항상 실패하게 되어 있었다. Task별 판정 기준 소유권(Task 2=S1-2/S1-3/S4-1/S4-2/INV-1, Task 3=S3, Task 6=S1-1)은 그대로 유지하면서, "전역 typecheck/build 그린"이라는 별도 게이트만 Task 6 완료 시점으로 미뤘다 — Task 재정렬이나 병합은 하지 않았다.
 
 **증거**: Task 2 커밋(`bun run test -- map-view` 17/17 통과) 시점의 `bun run typecheck` 실패 로그(`app/page.tsx(96,22)`, `config/map-provider.ts(7,14)`), Task 6 커밋 이후 `bun run build` 성공으로 최종 확인(아래 최종 체크포인트 참고).
+
+---
+triggers: [playwright install, cdn.playwright.dev 403, chromium revision mismatch, PLAYWRIGHT_BROWSERS_PATH, bunx playwright install 실패, test:e2e 실행 불가]
+status: verified
+scope: this-repo (이 sandbox 이미지 — /opt/pw-browsers에 chromium-1194만 사전 설치됨)
+date: 2026-08-06
+---
+## 이 sandbox는 Playwright 브라우저를 새로 다운로드할 수 없다 — package.json의 `^1.52.0`이 최신으로 resolve되면 사전 설치된 revision과 어긋난다
+
+**지시문**: `bun run test:e2e`가 브라우저 실행 파일을 못 찾거나 `bunx playwright install`이 `cdn.playwright.dev`에서 403(정책 차단, `$HTTPS_PROXY/__agentproxy/status`의 `recentRelayFailures`에 `connect_rejected` 기록)으로 실패하면, 먼저 `PLAYWRIGHT_BROWSERS_PATH`(`/opt/pw-browsers`)에 이미 설치된 revision을 확인한다(`ls /opt/pw-browsers`). `package.json`의 `playwright`/`@playwright/test`가 `^1.52.0`처럼 넓은 caret range면 `bun install`이 최신 patch(예: 1.59.1, chromium revision 1217 요구)로 resolve해버려 사전 설치된 revision(예: 1194)과 어긋난다. 해결: 사전 설치된 revision과 맞는 `playwright-core` 버전을 `node_modules/playwright-core/browsers.json`의 revision 필드로 역탐색(여러 후보 버전을 `bun add playwright-core@<v> --no-save`로 설치해보며 비교)한 뒤, 그 정확한 버전을 `bun add playwright@<v> @playwright/test@<v> --no-save`로 설치한다. `--no-save`를 쓰면 `package.json`/`bun.lock`이 바뀌지 않아 이 세션만의 임시 조정으로 남는다 — feature 범위와 무관한 의존성 버전 변경을 커밋 diff에 섞지 않기 위함이다.
+
+**에피소드**: Task 6에서 `bun install` 후 `bunx playwright install chromium --with-deps`가 매번 `cdn.playwright.dev`에서 403을 반환했다. `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`가 이미 설정돼 있었고 `chromium-1194`가 사전 설치돼 있었지만, `bun install`이 resolve한 `playwright-core@1.59.1`은 revision `1217`을 요구해 버전이 어긋났다. `/tmp` 스크래치 디렉터리에서 `playwright-core@1.56.0/1.55.0/1.54.0/1.53.0`을 차례로 설치해 `browsers.json`의 revision을 비교한 결과 `1.56.0`이 정확히 `1194`와 일치했다. `bun add playwright@1.56.0 @playwright/test@1.56.0 --no-save`로 맞춰 설치하자 `bun run test:e2e -- map-provider-selection`이 실제 Chromium에서 실행됐다(신규 티맵 케이스 2개 통과). `git status`로 `package.json`/`bun.lock`이 그대로임을 확인했다.
+
+**증거**: `/opt/pw-browsers`(chromium-1194, Chromium 141.0.7390.37), `playwright-core@1.56.0`의 `browsers.json` revision `1194` 일치 확인, `bun run test:e2e -- map-provider-selection` 실행 로그(6개 중 5개 통과 — 실패 1건은 `map.naver.com` 자체가 이번 세션 프록시 정책에서 403으로 막힌 기존 `map-provider-selection` 테스트이고 이 feature와 무관, 아래 별도 항목 참고).
+
+---
+triggers: [map.naver.com 403, connect_rejected, 네이버지도 길찾기 웹 폴백 e2e 실패, 프록시 정책 변경]
+status: hypothesis
+scope: this-sandbox-session (egress 정책이 세션마다 다를 수 있음)
+date: 2026-08-06
+---
+## `map.naver.com`이 이번 세션의 egress 정책에서 403으로 막혀 있다 — `map-provider-selection`의 기존 웹 폴백 e2e가 tmap 변경과 무관하게 실패한다
+
+**지시문**: `e2e/map-provider-selection.spec.ts`의 "[네이버지도 길찾기 웹 폴백]" 테스트가 `page.waitForURL`에서 타임아웃하면, tmap 변경을 의심하기 전에 `$HTTPS_PROXY/__agentproxy/status`의 `recentRelayFailures`에서 `map.naver.com:443`이 `connect_rejected`로 잡히는지 먼저 확인한다. 이 feature(tmap-provider-integration)의 변경과는 무관한, 이번 세션의 egress 정책(또는 일시적 프록시 상태) 문제일 수 있다.
+
+**에피소드**: `map-provider-selection`의 learnings.md(줄 27-33, 2026-07-23)는 같은 URL을 `curl -L`로 200을 받았고 Playwright로 실제 경로 렌더링까지 확인했다고 기록했는데, 이번 세션(2026-08-06)에서는 `curl`도 `CONNECT tunnel failed, response 403`, e2e도 5초 타임아웃으로 실패했다. 코드 변경(`lib/directions.ts`, `buildNaverWebFallbackUrl` 등)은 이번 feature에서 건드리지 않았으므로 회귀가 아니라 세션별 egress 정책 차이로 보인다. `status: hypothesis`로 남기고 확정하지 않는다 — 매 세션 프록시 정책이 다시 열릴 수도 있다.
+
+**증거**: `curl -sS -o /dev/null -w "HTTP %{http_code}" https://map.naver.com/p/directions/-/-/-/car` → tunnel 403, `$HTTPS_PROXY/__agentproxy/status`의 `recentRelayFailures`에 `map.naver.com:443` `connect_rejected` 2건(2026-08-06T11:10), `bun run test:e2e -- map-provider-selection` 로그에서 이 테스트만 실패(5/6 통과, tmap 신규 케이스 2개는 모두 통과).
+

@@ -160,7 +160,7 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 
 ---
 
-### Task 6: 페이지에 티맵 API 키를 배선하고 전체 흐름을 e2e로 증명한다
+### Task 6: 페이지에 티맵 API 키를 배선하고 전체 흐름을 e2e로 증명한다 — ✅ 완료 (commit 49f2482, b86ca5e, 4d8da1a — 스크립트 URL은 Task 1 learnings.md에서 확인한 `apis.openapi.sk.com/tmap/jsv2`로 실제 구현)
 
 - **담당 판정 기준**: S1-1
 - **크기**: S (2개 파일)
@@ -176,9 +176,10 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 
 ---
 
-### 최종 Checkpoint
-- [ ] spec.md의 **End-to-end 검증** 절차를 실행하고, 통과한 판정 기준의 체크박스를 `artifacts/tmap-provider-integration/spec.md`에서 켠다 (체크는 실행 증거로만 켠다)
-- [ ] `scripts/spec-coverage.sh tmap-provider-integration --tests`로 모든 ID(S1-1, S1-2, S1-3, S2, S3, S4-1, S4-2, S5, INV-1, INV-2)가 이 feature 소속 테스트에서 실제로 인용되는지 최종 확인 — 스크립트 요약만 믿지 말고, 이 feature의 테스트가 전부 `[tmap-provider-integration <ID>]` 형식으로 작성됐는지 직접 열어 확인한다 (bare 태그 사용 시 다른 feature의 기존 테스트와 충돌해 거짓 커버리지가 나올 수 있음 — plan-reviewer 검토에서 10개 ID 전부 실측 확인된 위험)
+### 최종 Checkpoint — ✅ 완료
+- [x] spec.md의 **End-to-end 검증** 절차를 실행하고, 통과한 판정 기준의 체크박스를 `artifacts/tmap-provider-integration/spec.md`에서 켠다 (체크는 실행 증거로만 켠다) — 10개 ID 전부 체크: S1-1·S3(Playwright e2e, 실 Chromium), S1-2·S1-3·S4-1·S4-2·INV-1(컴포넌트 테스트), S2·INV-2(단위 테스트), S5(컴포넌트 테스트). 마커·핀·자동 줌의 **시각적** 렌더링과 티맵 앱으로의 실제 딥링크 전환만은 실 appKey/실 티맵 앱 설치가 필요해 이 세션에서 확인하지 못함 (End-to-end 검증 섹션 하단 참고)
+- [x] `scripts/spec-coverage.sh tmap-provider-integration --tests`로 모든 ID(S1-1, S1-2, S1-3, S2, S3, S4-1, S4-2, S5, INV-1, INV-2)가 이 feature 소속 테스트에서 실제로 인용되는지 최종 확인 — 스크립트 자체는 `INV-2`를 "테스트 미인용"으로 오탐(우리 태그가 `[tmap-provider-integration INV-2]`라 스크립트의 `\[INV-2\]` 리터럴 괄호 매칭에 안 걸림 — 반대 방향의 안전한 오탐, 거짓 커버리지 아님)했지만, `grep -rlE "\[tmap-provider-integration $id\]" ...`로 10개 ID 전부 이 feature 소속 파일에서 직접 확인함: S1-1→e2e, S1-2/S1-3/S4-1/S4-2/INV-1→map-view.test.tsx(+e2e), S2/INV-2→directions.test.ts, S3→use-map-provider.test.ts+e2e, S5→settings-sheet.test.tsx
+- [x] `bun run test`(98/98), `bun run typecheck`, `bun run build` 모두 성공 (Task 6에서 `app/page.tsx` 배선 완료 후 전역 그린)
 
 ## 미결정 항목
 
