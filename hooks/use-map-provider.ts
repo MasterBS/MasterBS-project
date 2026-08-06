@@ -5,7 +5,7 @@ import { DEFAULT_MAP_PROVIDER, MAP_PROVIDER_STORAGE_KEY } from "@/config/map-pro
 import type { MapProvider } from "@/types/map-provider";
 
 function isMapProvider(value: string | null): value is MapProvider {
-  return value === "kakao" || value === "naver";
+  return value === "kakao" || value === "naver" || value === "tmap";
 }
 
 export function useMapProvider() {

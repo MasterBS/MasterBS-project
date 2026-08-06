@@ -1,1 +1,1 @@
-export type MapProvider = "kakao" | "naver";
+export type MapProvider = "kakao" | "naver" | "tmap";

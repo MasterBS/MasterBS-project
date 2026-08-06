@@ -38,4 +38,25 @@ describe("useMapProvider [S3][S4]", () => {
     expect(result.current.provider).toBe("kakao");
     expect(window.localStorage.getItem(MAP_PROVIDER_STORAGE_KEY)).toBe("kakao");
   });
+
+  it("[tmap-provider-integration S3] applies a stored tmap provider on mount", async () => {
+    window.localStorage.setItem(MAP_PROVIDER_STORAGE_KEY, "tmap");
+
+    const { result } = renderHook(() => useMapProvider());
+
+    await waitFor(() => expect(result.current.provider).toBe("tmap"));
+  });
+
+  it("[tmap-provider-integration S3] persists tmap to localStorage when selected", async () => {
+    const { result } = renderHook(() => useMapProvider());
+
+    await waitFor(() => expect(result.current.provider).toBe("naver"));
+
+    act(() => {
+      result.current.setProvider("tmap");
+    });
+
+    expect(result.current.provider).toBe("tmap");
+    expect(window.localStorage.getItem(MAP_PROVIDER_STORAGE_KEY)).toBe("tmap");
+  });
 });

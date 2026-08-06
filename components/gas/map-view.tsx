@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { KakaoMapView } from "./kakao-map-view";
 import { NaverMapView } from "./naver-map-view";
+import { TmapMapView } from "./tmap-map-view";
 import type { MapProvider } from "@/types/map-provider";
 import type { Station } from "@/types/station";
 
@@ -11,6 +12,7 @@ export type MapViewProps = {
   provider: MapProvider;
   kakaoAppKey: string;
   naverClientId: string;
+  tmapAppKey: string;
   currentLocation: { lat: number; lng: number };
   stations: Station[];
   selectedId?: string | null;
@@ -20,6 +22,7 @@ export function MapView({
   provider,
   kakaoAppKey,
   naverClientId,
+  tmapAppKey,
   currentLocation,
   stations,
   selectedId,
@@ -58,6 +61,19 @@ export function MapView({
       <NaverMapView
         key={retryCount}
         clientId={naverClientId}
+        currentLocation={currentLocation}
+        stations={stations}
+        selectedId={selectedId}
+        onError={handleError}
+      />
+    );
+  }
+
+  if (provider === "tmap") {
+    return (
+      <TmapMapView
+        key={retryCount}
+        appKey={tmapAppKey}
         currentLocation={currentLocation}
         stations={stations}
         selectedId={selectedId}

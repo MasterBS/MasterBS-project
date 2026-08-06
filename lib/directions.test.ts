@@ -4,6 +4,7 @@ import {
   buildNaverRouteUrl,
   buildNaverWebFallbackUrl,
   buildRouteUrl,
+  buildTmapRouteUrl,
   openRoute,
 } from "./directions";
 
@@ -53,6 +54,36 @@ describe("buildRouteUrl [S2]", () => {
     const url = buildRouteUrl("naver", origin, dest, "테스트주유소");
     expect(url).toBe(buildNaverRouteUrl(origin, dest, "테스트주유소"));
   });
+
+  it("[tmap-provider-integration S2] dispatches to the tmap builder when provider is tmap", () => {
+    const url = buildRouteUrl("tmap", origin, dest, "테스트주유소");
+    expect(url).toBe(buildTmapRouteUrl(origin, dest, "테스트주유소"));
+  });
+});
+
+describe("buildTmapRouteUrl [tmap-provider-integration S2]", () => {
+  it("[tmap-provider-integration S2] builds a tmap:// route URL with goalx/goaly/goalname from WGS84 coordinates", () => {
+    const origin = { lat: 37.5587543, lng: 127.0008881 };
+    const dest = { lat: 37.577933847449934, lng: 127.02272916490035 };
+
+    const url = buildTmapRouteUrl(origin, dest, "테스트주유소");
+    const parsed = new URL(url);
+
+    expect(parsed.protocol + "//" + parsed.host + parsed.pathname).toBe("tmap://route");
+    expect(parsed.searchParams.get("goalx")).toBe("127.02272916490035");
+    expect(parsed.searchParams.get("goaly")).toBe("37.577933847449934");
+    expect(parsed.searchParams.get("goalname")).toBe("테스트주유소");
+  });
+
+  it("[tmap-provider-integration S2] falls back to a default destination name when none is given", () => {
+    const origin = { lat: 37.5587543, lng: 127.0008881 };
+    const dest = { lat: 37.6, lng: 127.1 };
+
+    const url = buildTmapRouteUrl(origin, dest);
+    const parsed = new URL(url);
+
+    expect(parsed.searchParams.get("goalname")).toBeTruthy();
+  });
 });
 
 describe("buildNaverWebFallbackUrl", () => {
@@ -89,6 +120,17 @@ describe("openRoute [네이버지도 길찾기 앱 딥링크 폴백]", () => {
 
     expect(openSpy).toHaveBeenCalledTimes(1);
     expect(openSpy).toHaveBeenCalledWith(buildKakaoRouteUrl(origin, dest), "_blank");
+    vi.advanceTimersByTime(5000);
+    expect(openSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("[tmap-provider-integration S2][INV-2][tmap-provider-integration INV-2] tmap: opens the tmap route URL once and schedules no web-fallback timer", () => {
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+
+    openRoute("tmap", origin, dest, "테스트주유소");
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledWith(buildTmapRouteUrl(origin, dest, "테스트주유소"), "_blank");
     vi.advanceTimersByTime(5000);
     expect(openSpy).toHaveBeenCalledTimes(1);
   });
