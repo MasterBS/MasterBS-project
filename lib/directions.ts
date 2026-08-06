@@ -7,6 +7,7 @@ const NAVER_ROUTE_URL = "nmap://route/car";
 const NAVER_ROUTE_APPNAME = "cheap-gas-finder";
 const NAVER_WEB_DIRECTIONS_URL = "https://map.naver.com/p/directions";
 const NAVER_APP_FALLBACK_DELAY_MS = 1200;
+const TMAP_ROUTE_URL = "tmap://route";
 
 export function buildKakaoRouteUrl(origin: LatLng, dest: LatLng): string {
   const params = new URLSearchParams({
@@ -32,15 +33,25 @@ export function buildNaverRouteUrl(origin: LatLng, dest: LatLng, destName?: stri
   return `${NAVER_ROUTE_URL}?${params.toString()}`;
 }
 
+export function buildTmapRouteUrl(origin: LatLng, dest: LatLng, destName?: string): string {
+  const params = new URLSearchParams({
+    goalx: `${dest.lng}`,
+    goaly: `${dest.lat}`,
+    goalname: destName ?? "목적지",
+  });
+
+  return `${TMAP_ROUTE_URL}?${params.toString()}`;
+}
+
 export function buildRouteUrl(
   provider: MapProvider,
   origin: LatLng,
   dest: LatLng,
   destName?: string,
 ): string {
-  return provider === "naver"
-    ? buildNaverRouteUrl(origin, dest, destName)
-    : buildKakaoRouteUrl(origin, dest);
+  if (provider === "naver") return buildNaverRouteUrl(origin, dest, destName);
+  if (provider === "tmap") return buildTmapRouteUrl(origin, dest, destName);
+  return buildKakaoRouteUrl(origin, dest);
 }
 
 export function buildNaverWebFallbackUrl(origin: LatLng, dest: LatLng, destName?: string): string {
@@ -63,6 +74,11 @@ export function openRoute(
 ): void {
   if (provider === "kakao") {
     window.open(buildKakaoRouteUrl(origin, dest), "_blank");
+    return;
+  }
+
+  if (provider === "tmap") {
+    window.open(buildTmapRouteUrl(origin, dest, destName), "_blank");
     return;
   }
 
