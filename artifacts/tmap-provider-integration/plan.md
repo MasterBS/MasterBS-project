@@ -9,6 +9,7 @@
 | SDK 키 전달 방식 | `map-view.tsx`가 `tmapAppKey`를 세 번째 키 prop으로 추가 수신, 하위 `TmapMapView`에 전달 | 기존 `kakaoAppKey`/`naverClientId` 패턴과 동일하게 유지해 스위처 인터페이스 일관성을 확보 |
 | provider 선택지 순서 | 설정 시트에 기존 "카카오맵", "네이버지도" 뒤에 "티맵"을 append | 기존 두 옵션의 순서·라벨을 바꾸지 않아 기존 사용자 경험(선택 인덱스 등)에 영향 없음 |
 | SDK 로드 실패 처리 | 신규 로직 없음 — 기존 `map-view.tsx`의 provider-무관 에러 상태(`hasError`/`handleRetry`)를 그대로 재사용, `TmapMapView`는 Kakao/Naver와 동일하게 로드 실패 시 `onError` 콜백만 호출 | S4(SDK 로드 실패)를 위한 에러 UI·재시도 메커니즘은 `map-provider-selection` Task 6에서 이미 provider 중립적으로 구현되어 있어 재사용만 하면 된다 |
+| 테스트 판정 기준 태그 | 이 feature의 모든 신규/수정 테스트는 `[tmap-provider-integration S1-1]`처럼 **feature-prefix가 붙은 ID**로 인용한다 (bare `[S1-1]` 금지) | spec.md의 10개 ID(S1-1~INV-2)가 전부 `cheap-gas-finder`·`map-provider-selection` 기존 테스트에 bare 태그로 이미 존재해, `scripts/spec-coverage.sh --tests`가 미구현 상태에서도 "커버됨"으로 오판할 위험이 실측 확인됨(plan-reviewer 검토). `app/page.test.tsx`의 `[map-provider-selection S1-1]` 선례를 따른다 |
 
 ## 인프라 리소스
 
@@ -88,7 +89,7 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 - **구현 대상**:
   - `types/map-provider.ts` — `export type MapProvider = "kakao" | "naver" | "tmap"`
   - `components/gas/map-view.tsx` — props에 `tmapAppKey` 추가, `provider === "tmap"`이면 `TmapMapView`(with `appKey=tmapAppKey`) 렌더링하도록 분기 확장. 기존 `hasError`/`handleRetry`/`isFirstProviderRender` 로직은 provider 무관이므로 수정 없이 재사용
-  - `components/gas/map-view.test.tsx` — `provider="tmap"`일 때 `TmapMapView`가 렌더되는지, 마커/bounds 근거가 Kakao/Naver와 동일하게 전달되는지(INV-1), SDK 로드 실패 mock 시 기존과 동일한 에러 문구·재시도 버튼이 뜨는지(S4-1, S4-2) 검증
+  - `components/gas/map-view.test.tsx` — `provider="tmap"`일 때 `TmapMapView`가 렌더되는지, 마커/bounds 근거가 Kakao/Naver와 동일하게 전달되는지(`[tmap-provider-integration S1-2]`, `[tmap-provider-integration S1-3]`, `[tmap-provider-integration INV-1]`), SDK 로드 실패 mock 시 기존과 동일한 에러 문구·재시도 버튼이 뜨는지(`[tmap-provider-integration S4-1]`, `[tmap-provider-integration S4-2]`) 검증 — bare `[S1-2]` 등은 쓰지 않는다(아키텍처 결정 표의 "테스트 판정 기준 태그" 참고)
 - **검증**:
   - `bun run test -- map-view`
   - `bun run typecheck`
@@ -98,21 +99,21 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 ### Checkpoint: Tasks 1~2 이후
 - [ ] 모든 테스트 통과: `bun run test`
 - [ ] 빌드 성공: `bun run build`
-- [ ] 커버리지 검사 통과: `scripts/spec-coverage.sh tmap-provider-integration --tests` (S1-2, S1-3, S4-1, S4-2, INV-1만 인용 여부 확인 — 다른 feature와 ID 겹침 가능성 있으니 [learnings.md:7](../map-provider-selection/learnings.md) 절차대로 `grep -rl "\[$id\]" --include='*.test.*'`로 매치 파일이 실제로 이 feature 소속인지 직접 확인)
+- [ ] 커버리지 검사 통과: `scripts/spec-coverage.sh tmap-provider-integration --tests` (S1-2, S1-3, S4-1, S4-2, INV-1만 인용 여부 확인 — feature-prefix 태그(`[tmap-provider-integration S1-2]` 등)로 작성했는지 직접 열어 확인. 그래도 의심스러우면 [learnings.md:7](../map-provider-selection/learnings.md) 절차대로 `grep -rl "\[$id\]" --include='*.test.*'`로 매치 파일을 나열해 이 feature 소속인지 확인)
 - [ ] `MapView`가 `provider="tmap"` prop만으로 티맵 지도를 렌더링하고, SDK 실패 시 카카오/네이버와 동일한 에러 UI를 보임이 컴포넌트 테스트로 확인됨 (아직 페이지·설정 UI에는 미배선)
 
 ---
 
-### Task 3: MapProvider 타입에 티맵을 등록하고 선택이 저장·지속된다
+### Task 3: 설정 라벨(config)과 저장 훅(hooks)에 티맵을 등록해 선택이 저장·지속된다
 
 - **담당 판정 기준**: S3 (체크박스는 Task 6의 페이지 배선 완료 후 켠다 — 훅 단위 검증만 이 Task에서 수행)
 - **크기**: M (3개 파일)
-- **의존성**: Task 2 (`MapProvider` 유니온에 `"tmap"` 포함되어 있어야 함)
+- **의존성**: Task 2 (`MapProvider` 유니온에 `"tmap"`이 이미 추가되어 있어야 함 — 타입 자체는 Task 2에서 생성됨, 이 Task는 재사용만 함)
 - **참조**: 없음
 - **구현 대상**:
   - `config/map-provider.ts` — `MAP_PROVIDER_LABELS`에 `tmap: "티맵"` 추가
   - `hooks/use-map-provider.ts` — `isMapProvider` type guard에 `value === "tmap"` 추가
-  - `hooks/use-map-provider.test.ts` — 저장값 `"tmap"` → 해당 값 적용, `setProvider("tmap")` 호출 시 저장 확인
+  - `hooks/use-map-provider.test.ts` — 저장값 `"tmap"` → 해당 값 적용, `setProvider("tmap")` 호출 시 저장 확인 (`[tmap-provider-integration S3]`)
 - **검증**:
   - `bun run test -- use-map-provider`
   - `bun run typecheck`
@@ -127,7 +128,7 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 - **참조**: 없음
 - **구현 대상**:
   - `components/gas/settings-sheet.tsx` — `PROVIDER_OPTIONS`에 `"tmap"` 추가 (기존 배열 뒤에 append)
-  - `components/gas/settings-sheet.test.tsx` — "카카오맵", "네이버지도", "티맵" 세 옵션이 모두 렌더되는지, 현재 선택값이 정확히 표시되는지 검증
+  - `components/gas/settings-sheet.test.tsx` — "카카오맵", "네이버지도", "티맵" 세 옵션이 모두 렌더되는지, 현재 선택값이 정확히 표시되는지 검증 (`[tmap-provider-integration S5]`)
 - **검증**:
   - `bun run test -- settings-sheet`
   - `bun run typecheck`
@@ -137,22 +138,22 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 ### Checkpoint: Tasks 3~4 이후
 - [ ] 모든 테스트 통과: `bun run test`
 - [ ] 빌드 성공: `bun run build`
-- [ ] 커버리지 검사 통과: `scripts/spec-coverage.sh tmap-provider-integration --tests`
+- [ ] 커버리지 검사 통과: `scripts/spec-coverage.sh tmap-provider-integration --tests` (S3, S5가 feature-prefix 태그(`[tmap-provider-integration S3]`, `[tmap-provider-integration S5]`)로 인용됐는지 직접 확인 — 이 저장소는 동일 ID가 다른 feature 테스트에도 bare로 존재해 스크립트 요약만으로는 거짓 커버리지를 놓칠 수 있음)
 - [ ] 설정 시트가 세 옵션을 보여주고, `useMapProvider` 훅이 `"tmap"` 저장·복원을 독립적으로 만족함이 컴포넌트·훅 테스트로 확인됨
 
 ---
 
 ### Task 5: 길찾기가 티맵을 따른다
 
-- **담당 판정 기준**: S2, INV-2
+- **담당 판정 기준**: S2, INV-2 (INV-2는 지도 렌더링·길찾기 양쪽을 포괄하는 불변 규칙이지만, 렌더링 쪽 절반은 이미 Task 2의 S1-2/INV-1 테스트가 증명한다. 이 Task는 **길찾기 라우팅 쪽 절반만** `[tmap-provider-integration INV-2]`로 인용한다 — "이 태그가 곧 INV-2 전체 증명"이 아님에 주의)
 - **크기**: S (2개 파일)
-- **의존성**: Task 3 (`MapProvider` 타입)
+- **의존성**: Task 2 (`MapProvider` 타입만 필요, Task 3·4의 config/hooks/UI 변경과는 무관)
 - **참조**:
   - `lib/directions.ts`의 기존 `buildKakaoRouteUrl`/`openRoute`의 카카오 분기(단순 `window.open`, 폴백 없음) — 티맵도 동일한 패턴을 따름
   - 티맵 딥링크 스킴: `tmap://route?goalx=<lng>&goaly=<lat>&goalname=<destName>` (웹 검색으로 확인, 일부 사용자 리포트상 앱 버전에 따라 파라미터 미반영 사례 있음) — 실행 시점에 SK Open API 공식 문서로 최신 파라미터명 재확인 후 확정
 - **구현 대상**:
   - `lib/directions.ts` — `buildTmapRouteUrl(origin, dest, destName)` 추가, `buildRouteUrl`/`openRoute`를 3-way 분기로 확장(`provider === "tmap"`이면 카카오와 동일하게 `window.open(url, "_blank")`만 수행, 웹 폴백 없음)
-  - `lib/directions.test.ts` — `provider="tmap"`일 때 생성되는 URL과 `openRoute` 호출 시 웹 폴백 타이머가 걸리지 않는지 검증
+  - `lib/directions.test.ts` — `provider="tmap"`일 때 생성되는 URL과 `openRoute` 호출 시 웹 폴백 타이머가 걸리지 않는지 검증 (`[tmap-provider-integration S2]`, `[tmap-provider-integration INV-2]`)
 - **검증**:
   - `bun run test -- directions`
   - `bun run typecheck`
@@ -167,7 +168,7 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 - **참조**: `e2e/map-provider-selection.spec.ts`의 `stubMapSdks()` 패턴 — 실 키·도메인 등록 없이 SDK 스크립트 URL을 가로채 provider 분기를 증명 ([learnings.md:57](../map-provider-selection/learnings.md))
 - **구현 대상**:
   - `app/page.tsx` — `TMAP_APP_KEY = process.env.NEXT_PUBLIC_TMAP_APP_KEY ?? ""` 추가, `MapView`에 `tmapAppKey={TMAP_APP_KEY}` 전달
-  - `e2e/map-provider-selection.spec.ts` — `stubMapSdks()`에 티맵 SDK 스크립트(`apis.skplanetx.com/tmap/js`) 스텁 추가, "설정에서 티맵 선택 시 즉시 지도가 교체된다"(S1-1) 케이스와 "새로고침 후에도 티맵이 유지된다"(S3 통합 확인) 케이스 추가
+  - `e2e/map-provider-selection.spec.ts` — 이 파일은 `map-provider-selection` feature 소속이고 이미 bare `[S1][S3]` 태그 테스트가 있으므로, 새로 추가하는 티맵 케이스는 반드시 `test("[tmap-provider-integration S1-1] ...")`처럼 feature-prefix를 붙인다. `stubMapSdks()`에 티맵 SDK 스크립트(`apis.skplanetx.com/tmap/js`) 스텁 추가, "설정에서 티맵 선택 시 즉시 지도가 교체된다"(`[tmap-provider-integration S1-1]`) 케이스와 "새로고침 후에도 티맵이 유지된다"(S3 통합 확인, Task 3의 `[tmap-provider-integration S3]`와 별개 — 여기선 통합 증거일 뿐 새 ID 소유 아님) 케이스 추가
 - **검증**:
   - `bun run typecheck`
   - `bun run build`
@@ -177,7 +178,7 @@ SK Open API 콘솔(openapi.sk.com)에서의 실제 발급은 사용자가 직접
 
 ### 최종 Checkpoint
 - [ ] spec.md의 **End-to-end 검증** 절차를 실행하고, 통과한 판정 기준의 체크박스를 `artifacts/tmap-provider-integration/spec.md`에서 켠다 (체크는 실행 증거로만 켠다)
-- [ ] `scripts/spec-coverage.sh tmap-provider-integration --tests`로 모든 ID(S1-1, S1-2, S1-3, S2, S3, S4-1, S4-2, S5, INV-1, INV-2)가 이 feature 소속 테스트에서 실제로 인용되는지 최종 확인
+- [ ] `scripts/spec-coverage.sh tmap-provider-integration --tests`로 모든 ID(S1-1, S1-2, S1-3, S2, S3, S4-1, S4-2, S5, INV-1, INV-2)가 이 feature 소속 테스트에서 실제로 인용되는지 최종 확인 — 스크립트 요약만 믿지 말고, 이 feature의 테스트가 전부 `[tmap-provider-integration <ID>]` 형식으로 작성됐는지 직접 열어 확인한다 (bare 태그 사용 시 다른 feature의 기존 테스트와 충돌해 거짓 커버리지가 나올 수 있음 — plan-reviewer 검토에서 10개 ID 전부 실측 확인된 위험)
 
 ## 미결정 항목
 
