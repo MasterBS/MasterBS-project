@@ -118,3 +118,19 @@ date: 2026-08-07
 **에피소드**: `artifacts/tmap-provider-integration/learnings.md`(이전 항목)에서 "Map 생성자 container 인자가 HTMLElement가 아니라 문자열일 수 있다"는 hypothesis를 확인하고 고쳐서 PR #6으로 병합·배포했는데, 사용자가 프로덕션(`master-bs-project.vercel.app`, 실 appKey 등록됨)에서 여전히 "지도를 불러오지 못했어요"를 보고 개발자도구 콘솔을 열어 정확한 에러 텍스트를 보내줬다: `jsv2?version=1&appKey=...:17 Failed to execute 'write' on 'Document': ...`. 이 sandbox는 `apis.openapi.sk.com` 자체가 egress 정책으로 막혀 있어 실제 스크립트 응답을 받아본 적이 없었기 때문에, 이 에러는 사용자의 실제 콘솔 출력이 있어야만 알 수 있었다 — container-id 수정은 필요했지만 충분하지 않았다(두 버그가 순차적으로 발견된 것). `lib/tmap-loader.ts`의 `script.async = true` → `false`로 수정.
 
 **증거**: 사용자가 보낸 프로덕션 콘솔 에러 원문(위 인용), `lib/tmap-loader.ts`의 `script.async = false` + 주석, `lib/tmap-loader.test.ts`의 "sets async=false on the script tag" 회귀 테스트. 이 sandbox 안에서는 실 SDK 응답으로 재현·검증하지 못했으므로, 최종 확인은 프로덕션 재배포 후 사용자 쪽에서 필요하다.
+
+---
+
+---
+triggers: [PendingScript, React 19 script hoist, document.head.appendChild 무력화, react-dom head instrumentation, document.write 계속 실패, async=false 안 먹힘]
+status: hypothesis
+scope: this-repo (Next.js 16 / React 19 — document.head 스크립트 자동 hoist/dedup)
+date: 2026-08-07
+---
+## `script.async = false`만으로는 부족했다 — React 19가 `document.head`에 붙는 스크립트를 자체 `PendingScript` 경로로 가로챈다. `document.body`에 붙여야 한다
+
+**지시문**: React 19(Next.js 16 포함)는 `document.head`에 삽입되는 `<script>`를 — JSX `<script>` 컴포넌트든, `document.createElement`로 직접 만들어 `document.head.appendChild`한 것이든 — 자체 리소스 호이스팅/중복제거(dedup) 시스템으로 재처리하는 것으로 보인다. 이 경로를 타면 우리가 명시적으로 설정한 `script.async = false`가 실제로 반영되지 않아, `document.write()`를 호출하는 SDK(Tmap)는 "asynchronously-loaded external script" 에러를 계속 낸다. 해결: `document.head.appendChild(script)` 대신 `document.body.appendChild(script)`를 쓴다 — body는 React의 head 리소스 관리 대상이 아니라서 우리가 설정한 속성이 그대로 유지된다.
+
+**에피소드**: 이전 항목(`script.async = false` 수정, PR #7)을 병합·배포했는데도 사용자가 프로덕션에서 정확히 동일한 콘솔 에러를 다시 보고했다. 두 번째로 받은 콘솔 스택 트레이스에 `PendingScript`와 Next.js 자체 번들(`758b1243be5f08d6.js`, `f2f58a7e93290fbb.js`)이 우리 스크립트의 document.write 호출 사이에 끼어 있는 것을 보고 React의 head 스크립트 가로채기를 의심했다. 웹 검색으로 "React 19는 `<script>`를 특정 상황에 head로 hoist·dedup한다"는 공식 언급과, "[React 19] Script tags not executing when embedded in components"라는 관련 GitHub 이슈 제목을 확인해 가설을 보강했다. `document.body.appendChild`로 바꾸는 수정을 적용했지만, **이 sandbox는 `apis.openapi.sk.com` 자체가 egress 정책으로 막혀 있어 실 SDK 응답으로 검증하지 못했다** — `status: hypothesis`로 남긴다. 만약 이 수정도 실패하면, 다음 후보는 `document.write`/`document.writeln`을 스크립트 로드 동안 임시로 오버라이드해 무해한 DOM 삽입으로 바꿔치기하는 monkey-patch다.
+
+**증거**: 사용자가 보낸 두 번째 콘솔 스택 트레이스(`PendingScript`, `758b1243be5f08d6.js`, `f2f58a7e93290fbb.js` 프레임 포함), `lib/tmap-loader.ts`의 `document.body.appendChild(script)`, `lib/tmap-loader.test.ts`의 "appends to document.body, not document.head" 회귀 테스트. 최종 확인은 프로덕션 재배포 후 사용자 콘솔에서 필요.

@@ -4,18 +4,18 @@ describe("loadTmapMaps [tmap]", () => {
   beforeEach(() => {
     vi.resetModules();
     delete window.Tmapv2;
-    document.head.innerHTML = "";
+    document.body.innerHTML = "";
   });
 
   afterEach(() => {
-    document.head.innerHTML = "";
+    document.body.innerHTML = "";
   });
 
   it("[tmap] appends exactly one script tag with the appKey", async () => {
     const { loadTmapMaps } = await import("./tmap-loader");
 
     const promise = loadTmapMaps("test-app-key");
-    const script = document.head.querySelector("script");
+    const script = document.body.querySelector("script");
 
     expect(script).not.toBeNull();
     expect(script!.src).toContain("apis.openapi.sk.com/tmap/jsv2");
@@ -32,9 +32,18 @@ describe("loadTmapMaps [tmap]", () => {
     const { loadTmapMaps } = await import("./tmap-loader");
 
     loadTmapMaps("test-app-key");
-    const script = document.head.querySelector("script");
+    const script = document.body.querySelector("script");
 
     expect(script!.async).toBe(false);
+  });
+
+  it("[tmap] appends to document.body, not document.head (React 19 hoists/dedupes head scripts and overrides async=false there)", async () => {
+    const { loadTmapMaps } = await import("./tmap-loader");
+
+    loadTmapMaps("test-app-key");
+
+    expect(document.head.querySelector("script")).toBeNull();
+    expect(document.body.querySelector("script")).not.toBeNull();
   });
 
   it("[tmap] does not append a second script tag for a concurrent call while loading", async () => {
@@ -43,9 +52,9 @@ describe("loadTmapMaps [tmap]", () => {
     const first = loadTmapMaps("test-app-key");
     const second = loadTmapMaps("test-app-key");
 
-    expect(document.head.querySelectorAll("script")).toHaveLength(1);
+    expect(document.body.querySelectorAll("script")).toHaveLength(1);
 
-    const script = document.head.querySelector("script")!;
+    const script = document.body.querySelector("script")!;
     // @ts-expect-error - simulating the real SDK script
     window.Tmapv2 = { Map: class {} };
     script.onload?.(new Event("load"));
@@ -62,7 +71,7 @@ describe("loadTmapMaps [tmap]", () => {
 
     const result = await loadTmapMaps("test-app-key");
 
-    expect(document.head.querySelectorAll("script")).toHaveLength(0);
+    expect(document.body.querySelectorAll("script")).toHaveLength(0);
     expect(result).toBe(window.Tmapv2);
   });
 
@@ -70,7 +79,7 @@ describe("loadTmapMaps [tmap]", () => {
     const { loadTmapMaps } = await import("./tmap-loader");
 
     const promise = loadTmapMaps("test-app-key");
-    const script = document.head.querySelector("script")!;
+    const script = document.body.querySelector("script")!;
     script.onerror?.(new Event("error"));
 
     await expect(promise).rejects.toThrow();
