@@ -20,13 +20,12 @@ export function loadTmapMaps(appKey: string): Promise<Tmapv2> {
   loadPromise = new Promise<Tmapv2>((resolve, reject) => {
     const script = document.createElement("script");
     script.src = `${TMAP_SDK_URL}?version=1&appKey=${appKey}`;
-    // Tmap SDK calls document.write() internally while it runs. Dynamically-created
-    // <script> elements default to async=true, which Chrome refuses to let call
-    // document.write ("Failed to execute 'write' on 'Document': It isn't possible
-    // to write into a document from an asynchronously-loaded external script").
-    // Explicitly setting async=false restores in-order/document.write-eligible
-    // execution semantics without blocking initial page parsing (the tag is
-    // appended long after the document has already loaded).
+    // Tmap SDK calls document.write() internally while it runs, and Chrome refuses
+    // document.write from an async-flagged script. async=false alone wasn't enough
+    // here: React 19 instruments document.head's insertion methods to hoist/dedupe
+    // <script> elements into its own "PendingScript" resource-loading path, which
+    // overrides this. Appending to <body> instead keeps the tag outside that
+    // interception, so our async=false actually takes effect.
     script.async = false;
     script.onload = () => {
       resolve(window.Tmapv2!);
@@ -35,7 +34,7 @@ export function loadTmapMaps(appKey: string): Promise<Tmapv2> {
       loadPromise = null;
       reject(new Error("티맵 SDK 로드에 실패했습니다."));
     };
-    document.head.appendChild(script);
+    document.body.appendChild(script);
   });
 
   return loadPromise;
