@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { loadTmapMaps } from "@/lib/tmap-loader";
 import type { Tmapv2, TmapLatLng, TmapMap, TmapMarker } from "@/types/tmap";
 import type { Station } from "@/types/station";
@@ -12,6 +12,8 @@ export type TmapMapViewProps = {
   selectedId?: string | null;
   onError?: () => void;
 };
+
+const DEFAULT_ZOOM = 15;
 
 const CURRENT_LOCATION_MARKER_SVG =
   "data:image/svg+xml;utf8," +
@@ -32,6 +34,7 @@ export function TmapMapView({
   selectedId,
   onError,
 }: TmapMapViewProps) {
+  const containerId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const tmapRef = useRef<Tmapv2 | null>(null);
   const mapRef = useRef<TmapMap | null>(null);
@@ -45,10 +48,13 @@ export function TmapMapView({
       .then((tmap) => {
         if (cancelled || !containerRef.current) return;
         tmapRef.current = tmap;
-        mapRef.current = new tmap.Map(containerRef.current, {
+        // 실제 Tmapv2.Map 생성자는 HTMLElement가 아니라 컨테이너의 DOM id(string)를
+        // 받는다(내부적으로 document.getElementById 조회) — types/tmap.ts 참고.
+        mapRef.current = new tmap.Map(containerId, {
           center: new tmap.LatLng(currentLocation.lat, currentLocation.lng),
           width: "100%",
           height: "100%",
+          zoom: DEFAULT_ZOOM,
         });
         setIsMapReady(true);
       })
@@ -108,5 +114,13 @@ export function TmapMapView({
     map.fitBounds(bounds);
   }, [isMapReady, stations, currentLocation, selectedId]);
 
-  return <div ref={containerRef} role="img" aria-label="주변 주유소 위치 지도" className="size-full" />;
+  return (
+    <div
+      id={containerId}
+      ref={containerRef}
+      role="img"
+      aria-label="주변 주유소 위치 지도"
+      className="size-full"
+    />
+  );
 }
