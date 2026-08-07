@@ -102,3 +102,19 @@ date: 2026-08-06
 **에피소드**: 이전 항목(위 참고)에서 이미 "실 appKey로 확인 전까지 이 부분이 틀렸을 수 있다"고 hypothesis로 남겨뒀는데, 사용자가 실제로 SK Open API 콘솔에서 앱키를 발급받아 Vercel 프로덕션(`master-bs-project.vercel.app`)에 등록·재배포한 뒤 "티맵" provider를 선택하자 처음엔 전체 페이지가 깨지는 "Application error: a client-side exception has occurred"가 떴고(스크린샷으로 확인), 재배포 후에는 (원인 불명의 변화로) 우리 코드의 `.catch()`가 정상적으로 잡아 "지도를 불러오지 못했어요" 에러 UI로 안전하게 떨어졌다. 사용자가 요청한 SK Open API 도메인 등록 가이드 페이지(`openapi.sk.com/products/detail?linkMenuSeq=35`)는 이 환경에서 WebFetch가 egress 정책으로 차단되어 직접 열지 못했지만, 대신 새로 검색한 독립적인 예제 코드(`new Tmapv2.Map("map_div", { center: new window.Tmapv2.LatLng(...), width, height, zoom })`)가 이전에 남겨둔 hypothesis와 정확히 일치하는 패턴(문자열 id, `zoom` 옵션 포함)을 다시 확인해줘서, 코드를 그에 맞게 고쳤다(`useId()`로 DOM id를 만들어 컨테이너에 붙이고 생성자에 그 id를 전달, `zoom: 15` 추가). `bun run test`(99/99)·`bun run typecheck`·`bun run build` 모두 통과했지만, **이 sandbox는 `apis.openapi.sk.com` 자체가 egress 정책으로 차단돼 있어 실제 SDK 응답으로 이 수정이 진짜 문제를 해결했는지 여기서는 검증할 수 없다** — 사용자의 프로덕션 환경에서 재확인 필요. 도메인(Referer) 미등록 문제일 가능성도 배제하지 못했으므로, 이 수정 후에도 지도가 안 뜨면 도메인 등록 여부부터 다시 점검할 것.
 
 **증거**: `components/gas/tmap-map-view.tsx`의 `useId()`/`id={containerId}`/`new tmap.Map(containerId, {...})`, `types/tmap.ts`의 `Map: new (container: string, ...)`, `components/gas/tmap-map-view.test.tsx`의 "passes the container's DOM id string" 테스트(렌더된 div의 `id`와 fake `Map` 생성자에 전달된 `container` 값이 일치하는지 검증). 사용자가 보낸 두 스크린샷(첫 번째: 전체 페이지 크래시, 두 번째: 재배포 후 리스트는 정상 + 지도만 그레이스풀 에러)이 유일한 실제 증거이고, 이 sandbox 안에서 재현·검증한 것은 아니다.
+
+---
+
+---
+triggers: [document.write, "Failed to execute 'write' on 'Document'", asynchronously-loaded external script, script.async, tmap sdk 로드 실패, 콘솔 에러]
+status: verified
+scope: this-repo (Tmap JS SDK — 실 프로덕션 콘솔 에러로 확인)
+date: 2026-08-07
+---
+## Tmap SDK는 내부적으로 document.write()를 쓴다 — 동적으로 만든 `<script>`는 `async = false`로 명시해야 한다
+
+**지시문**: Tmap SDK(`apis.openapi.sk.com/tmap/jsv2`)를 동적으로 `document.createElement("script")`로 주입할 때 `script.async = true`(또는 생략, 동적 script 엘리먼트의 기본값도 `true`)로 두면 실 appKey로 스크립트가 실제 로드된 뒤 브라우저 콘솔에 `Failed to execute 'write' on 'Document': It isn't possible to write into a document from an asynchronously-loaded external script unless it is explicitly opened.`가 뜨며 SDK 초기화가 깨진다. SDK 코드 내부가 `document.write()`(추가 리소스 script 태그 삽입 등 레거시 패턴으로 보임)를 호출하는데, 크롬은 "비동기로 삽입된 외부 스크립트"에서의 `document.write` 호출을 거부한다. 고치려면 스크립트 엘리먼트 생성 시 `script.async = false`를 명시한다 — 이미 문서 로드가 끝난 뒤(예: React `useEffect`)에 붙이는 태그라도, `async`를 명시적으로 `false`로 설정하면 실행 순서 시맨틱이 "동기 삽입"으로 취급되어 이 제약을 피해간다. 카카오/네이버 SDK는 이런 문제가 없었으므로(document.write를 안 쓰는 것으로 보임) `kakao-loader.ts`/`naver-loader.ts`는 건드릴 필요 없다.
+
+**에피소드**: `artifacts/tmap-provider-integration/learnings.md`(이전 항목)에서 "Map 생성자 container 인자가 HTMLElement가 아니라 문자열일 수 있다"는 hypothesis를 확인하고 고쳐서 PR #6으로 병합·배포했는데, 사용자가 프로덕션(`master-bs-project.vercel.app`, 실 appKey 등록됨)에서 여전히 "지도를 불러오지 못했어요"를 보고 개발자도구 콘솔을 열어 정확한 에러 텍스트를 보내줬다: `jsv2?version=1&appKey=...:17 Failed to execute 'write' on 'Document': ...`. 이 sandbox는 `apis.openapi.sk.com` 자체가 egress 정책으로 막혀 있어 실제 스크립트 응답을 받아본 적이 없었기 때문에, 이 에러는 사용자의 실제 콘솔 출력이 있어야만 알 수 있었다 — container-id 수정은 필요했지만 충분하지 않았다(두 버그가 순차적으로 발견된 것). `lib/tmap-loader.ts`의 `script.async = true` → `false`로 수정.
+
+**증거**: 사용자가 보낸 프로덕션 콘솔 에러 원문(위 인용), `lib/tmap-loader.ts`의 `script.async = false` + 주석, `lib/tmap-loader.test.ts`의 "sets async=false on the script tag" 회귀 테스트. 이 sandbox 안에서는 실 SDK 응답으로 재현·검증하지 못했으므로, 최종 확인은 프로덕션 재배포 후 사용자 쪽에서 필요하다.
