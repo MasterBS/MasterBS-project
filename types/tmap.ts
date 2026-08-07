@@ -21,9 +21,11 @@ export type TmapMarker = {
 // Tmapv2는 카카오/네이버와 달리 `window.Tmapv2.maps.Map`이 아니라
 // `window.Tmapv2.Map`처럼 네임스페이스 자체에 클래스가 바로 달려 있다.
 export type Tmapv2 = {
+  // 실제 SDK는 HTMLElement가 아니라 컨테이너의 DOM id(string)를 받아 내부적으로
+  // document.getElementById(id)로 조회한다 — HTMLElement를 넘기면 초기화가 실패한다.
   Map: new (
-    container: HTMLElement,
-    options: { center: TmapLatLng; width?: string; height?: string },
+    container: string,
+    options: { center: TmapLatLng; width?: string; height?: string; zoom?: number },
   ) => TmapMap;
   LatLng: new (lat: number, lng: number) => TmapLatLng;
   LatLngBounds: new (first?: TmapLatLng) => TmapLatLngBounds;

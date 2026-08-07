@@ -53,7 +53,7 @@ function createFakeTmap() {
   }
 
   class FakeMap {
-    constructor(container: HTMLElement, options: Record<string, unknown>) {
+    constructor(container: string, options: Record<string, unknown>) {
       mapInstances.push({ container, options });
     }
     fitBounds(bounds: unknown) {
@@ -163,6 +163,24 @@ describe("TmapMapView [tmap]", () => {
       (m) => (m.options.position as { lat_: number })?.lat_ === stations[1].lat,
     );
     expect(selectedMarker?.options.icon).toBeDefined();
+  });
+
+  it("[tmap] passes the container's DOM id string (not the element) to the SDK, per the real Tmapv2.Map(id, options) signature", async () => {
+    const fake = createFakeTmap();
+    vi.mocked(loadTmapMaps).mockResolvedValue(fake.tmap as never);
+
+    const { container } = render(
+      <TmapMapView appKey="test-app-key" currentLocation={{ lat: 37.56, lng: 127.0 }} stations={[]} />,
+    );
+
+    await waitFor(() => expect(fake.mapInstances).toHaveLength(1));
+
+    const renderedDiv = container.querySelector("div");
+    expect(renderedDiv?.id).toBeTruthy();
+    expect(fake.mapInstances[0]).toMatchObject({
+      container: renderedDiv?.id,
+      options: expect.objectContaining({ zoom: 15 }),
+    });
   });
 
   it("[tmap] calls onError when the SDK fails to load", async () => {

@@ -86,3 +86,19 @@ date: 2026-08-06
 **에피소드**: `components/gas/map-view.test.tsx`의 INV-1 테스트는 이미 `[INV-1][tmap-provider-integration INV-1]`처럼 두 태그를 나란히 썼는데(전 Task에서 이렇게 작성됨), `lib/directions.test.ts`의 INV-2 테스트는 `[tmap-provider-integration S2][tmap-provider-integration INV-2]`처럼 feature-prefix만 썼다. `scripts/spec-coverage.sh tmap-provider-integration --tests`를 돌리니 다른 9개 ID는 전부 통과했는데 INV-2만 "테스트 미인용"으로 실패했다 — 확인해보니 나머지 9개는 사실 이 feature의 태그 형식과 무관하게, `cheap-gas-finder`·`map-provider-selection`의 **기존 bare 태그**(예: `app/page.test.tsx`의 `[S1-1]`, `hooks/use-map-provider.test.ts`의 `[S3]` 등, 전혀 다른 판정 기준)가 우연히 정규식에 매치되어 "커버됨"으로 보인 것이었다(`map-provider-selection/learnings.md:7`에 기록된 것과 동일한 종류의 우연한 매치). INV-2만 다른 feature에 동일 이름의 bare 태그가 전혀 없어서, 진짜로 이 feature의 테스트가 인용되지 않았다는 사실이 드러난 것. `[INV-2][tmap-provider-integration INV-2]`로 bare 태그를 추가하자 통과했다.
 
 **증거**: `for id in S1-1 S1-2 S1-3 S2 S3 S4-1 S4-2 S5 INV-1 INV-2; do grep -rlE "\[$id(-[0-9]+)?\]" ...; done` 실행 결과 — INV-2만 매치 파일 0개, 나머지는 전부 `cheap-gas-finder`/`map-provider-selection` 소속 파일에서 매치(`app/page.test.tsx`, `hooks/use-map-provider.test.ts`(구 map-provider-selection 부분), `e2e/cheap-gas-finder.spec.ts` 등). `lib/directions.test.ts:127`을 `[INV-2][tmap-provider-integration INV-2]`로 수정한 뒤 `scripts/spec-coverage.sh tmap-provider-integration --tests` → "커버리지 OK"로 전환.
+
+---
+
+---
+triggers: [tmap, Tmapv2.Map, container id, HTMLElement vs id, 프로덕션 크래시, client-side exception, new Tmapv2.Map]
+status: hypothesis
+scope: this-repo (Tmap JS SDK — 실 appKey로 프로덕션 재현, 수정 반영 완료·최종 확인 대기)
+date: 2026-08-06
+---
+## 위 항목에서 미검증으로 남겨둔 "Map 생성자 container 인자" 위험이 실제 프로덕션에서 재현된 것으로 보인다 — HTMLElement 대신 DOM id(string)로 수정
+
+**지시문**: `components/gas/tmap-map-view.tsx`가 `new tmap.Map(containerRef.current, {...})`처럼 HTMLElement를 넘기고 있다면, `new tmap.Map(id, {...})`처럼 컨테이너의 DOM id 문자열로 바꾼다. React에서는 `useId()`로 안정적인 id를 만들어 컨테이너 `<div id={id}>`에 붙이고, 그 문자열을 생성자에 넘긴다. `types/tmap.ts`의 `Map` 생성자 시그니처도 `container: HTMLElement` → `container: string`으로 함께 고친다.
+
+**에피소드**: 이전 항목(위 참고)에서 이미 "실 appKey로 확인 전까지 이 부분이 틀렸을 수 있다"고 hypothesis로 남겨뒀는데, 사용자가 실제로 SK Open API 콘솔에서 앱키를 발급받아 Vercel 프로덕션(`master-bs-project.vercel.app`)에 등록·재배포한 뒤 "티맵" provider를 선택하자 처음엔 전체 페이지가 깨지는 "Application error: a client-side exception has occurred"가 떴고(스크린샷으로 확인), 재배포 후에는 (원인 불명의 변화로) 우리 코드의 `.catch()`가 정상적으로 잡아 "지도를 불러오지 못했어요" 에러 UI로 안전하게 떨어졌다. 사용자가 요청한 SK Open API 도메인 등록 가이드 페이지(`openapi.sk.com/products/detail?linkMenuSeq=35`)는 이 환경에서 WebFetch가 egress 정책으로 차단되어 직접 열지 못했지만, 대신 새로 검색한 독립적인 예제 코드(`new Tmapv2.Map("map_div", { center: new window.Tmapv2.LatLng(...), width, height, zoom })`)가 이전에 남겨둔 hypothesis와 정확히 일치하는 패턴(문자열 id, `zoom` 옵션 포함)을 다시 확인해줘서, 코드를 그에 맞게 고쳤다(`useId()`로 DOM id를 만들어 컨테이너에 붙이고 생성자에 그 id를 전달, `zoom: 15` 추가). `bun run test`(99/99)·`bun run typecheck`·`bun run build` 모두 통과했지만, **이 sandbox는 `apis.openapi.sk.com` 자체가 egress 정책으로 차단돼 있어 실제 SDK 응답으로 이 수정이 진짜 문제를 해결했는지 여기서는 검증할 수 없다** — 사용자의 프로덕션 환경에서 재확인 필요. 도메인(Referer) 미등록 문제일 가능성도 배제하지 못했으므로, 이 수정 후에도 지도가 안 뜨면 도메인 등록 여부부터 다시 점검할 것.
+
+**증거**: `components/gas/tmap-map-view.tsx`의 `useId()`/`id={containerId}`/`new tmap.Map(containerId, {...})`, `types/tmap.ts`의 `Map: new (container: string, ...)`, `components/gas/tmap-map-view.test.tsx`의 "passes the container's DOM id string" 테스트(렌더된 div의 `id`와 fake `Map` 생성자에 전달된 `container` 값이 일치하는지 검증). 사용자가 보낸 두 스크린샷(첫 번째: 전체 페이지 크래시, 두 번째: 재배포 후 리스트는 정상 + 지도만 그레이스풀 에러)이 유일한 실제 증거이고, 이 sandbox 안에서 재현·검증한 것은 아니다.
