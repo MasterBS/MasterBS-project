@@ -134,3 +134,19 @@ date: 2026-08-07
 **에피소드**: 이전 항목(`script.async = false` 수정, PR #7)을 병합·배포했는데도 사용자가 프로덕션에서 정확히 동일한 콘솔 에러를 다시 보고했다. 두 번째로 받은 콘솔 스택 트레이스에 `PendingScript`와 Next.js 자체 번들(`758b1243be5f08d6.js`, `f2f58a7e93290fbb.js`)이 우리 스크립트의 document.write 호출 사이에 끼어 있는 것을 보고 React의 head 스크립트 가로채기를 의심했다. 웹 검색으로 "React 19는 `<script>`를 특정 상황에 head로 hoist·dedup한다"는 공식 언급과, "[React 19] Script tags not executing when embedded in components"라는 관련 GitHub 이슈 제목을 확인해 가설을 보강했다. `document.body.appendChild`로 바꾸는 수정을 적용했지만, **이 sandbox는 `apis.openapi.sk.com` 자체가 egress 정책으로 막혀 있어 실 SDK 응답으로 검증하지 못했다** — `status: hypothesis`로 남긴다. 만약 이 수정도 실패하면, 다음 후보는 `document.write`/`document.writeln`을 스크립트 로드 동안 임시로 오버라이드해 무해한 DOM 삽입으로 바꿔치기하는 monkey-patch다.
 
 **증거**: 사용자가 보낸 두 번째 콘솔 스택 트레이스(`PendingScript`, `758b1243be5f08d6.js`, `f2f58a7e93290fbb.js` 프레임 포함), `lib/tmap-loader.ts`의 `document.body.appendChild(script)`, `lib/tmap-loader.test.ts`의 "appends to document.body, not document.head" 회귀 테스트. 최종 확인은 프로덕션 재배포 후 사용자 콘솔에서 필요.
+
+---
+
+---
+triggers: [document.write, "Failed to execute 'write' on 'Document'", createContextualFragment, monkeypatch, 여전히 같은 에러, head/body 둘다 실패, async 둘다 실패]
+status: hypothesis
+scope: this-repo (Tmap JS SDK — 프로덕션에서 동일 에러 2회 재현, async=false·body 이동 둘 다 실패로 확인됨)
+date: 2026-08-07
+---
+## async=false·document.body 이동 둘 다 프로덕션에서 실패했다 — document.write 자체를 로드 중에만 가로채는 monkey-patch로 교체
+
+**지시문**: Tmap SDK가 내부에서 부르는 `document.write()`는, 스크립트가 head에 있든 body에 있든 `async` 값이 무엇이든, **최초 HTML 파싱이 이미 끝난 뒤에 실행되는 한** 브라우저가 원천적으로 거부한다(파서 자신의 동기 `<script>` 실행 중에만 legal). 우리는 React 마운트 후(`useEffect`)에 스크립트를 주입하므로 이 조건에 항상 해당한다 — 즉 스크립트 삽입 위치·async 플래그로는 절대 못 고친다. 진짜 해결책은 `document.write`/`document.writeln`을 스크립트가 로드되는 동안만 임시로 다른 함수로 바꿔치기해서, SDK가 그걸 호출하면 예외 대신 `Range#createContextualFragment`(innerHTML과 달리 결과에 포함된 `<script>` 태그를 실제로 실행시킴)로 파싱해 `document.body`에 append하게 만드는 것이다. 로드 성공/실패 시점에 원래 함수로 반드시 복원한다. **복원 시 `.bind(document)`로 감싸지 말고 원본 함수 참조를 그대로 저장·재할당한다** — `document.write(...)`처럼 메서드 문법으로 호출되면 `this`는 자동으로 바인딩되므로 bind가 불필요하고, bind하면 매번 새 함수 객체가 생겨 테스트에서 `toBe(originalWrite)` 같은 참조 동일성 검사가 깨진다.
+
+**에피소드**: 이전 두 항목(async=false → PR #7, document.body 이동 → PR #8)을 순서대로 배포했는데 사용자가 정확히 동일한 콘솔 에러(`jsv2?...:17 Failed to execute 'write' on 'Document'...`)를 두 번 다시 보고했다 — 즉 두 가설(async 플래그, head vs body/React PendingScript) 모두 틀렸거나 최소한 근본 원인이 아니었다. 두 수정이 증상을 하나도 바꾸지 못했다는 사실 자체가 "스크립트 삽입 방식과 무관하게 document.write가 애초에 불가능한 타이밍"이라는 더 근본적인 설명을 가리켰다. `lib/tmap-loader.ts`를 document.write/writeln 오버라이드 방식으로 다시 고쳤다. 이 sandbox는 여전히 `apis.openapi.sk.com`이 막혀 있어 실 SDK로 검증하지 못했으므로 `status: hypothesis`로 남긴다 — 이번에도 실패하면, 스크립트를 애초에 서버 렌더링된 초기 HTML(`next/script` `beforeInteractive` 등)에 넣어 파싱 중에 실행되게 하는, provider 조건부 로딩을 포기하는 더 급진적인 대안을 검토해야 한다.
+
+**증거**: 사용자가 두 차례 보낸 동일한 프로덕션 콘솔 에러(PR #7, #8 배포 후 각각), `lib/tmap-loader.ts`의 `document.write`/`document.writeln` 임시 오버라이드 + `createContextualFragment` 기반 재구현, `lib/tmap-loader.test.ts`의 "overrides document.write/writeln while the script is loading" / "restores document.write/writeln when the script fails to load" 테스트(jsdom에서 오버라이드·복원·참조 동일성 검증).
