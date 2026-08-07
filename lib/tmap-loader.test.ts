@@ -28,6 +28,15 @@ describe("loadTmapMaps [tmap]", () => {
     await expect(promise).resolves.toBe(window.Tmapv2);
   });
 
+  it("[tmap] sets async=false on the script tag so the SDK's internal document.write() is allowed", async () => {
+    const { loadTmapMaps } = await import("./tmap-loader");
+
+    loadTmapMaps("test-app-key");
+    const script = document.head.querySelector("script");
+
+    expect(script!.async).toBe(false);
+  });
+
   it("[tmap] does not append a second script tag for a concurrent call while loading", async () => {
     const { loadTmapMaps } = await import("./tmap-loader");
 

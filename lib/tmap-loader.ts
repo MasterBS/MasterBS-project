@@ -20,7 +20,14 @@ export function loadTmapMaps(appKey: string): Promise<Tmapv2> {
   loadPromise = new Promise<Tmapv2>((resolve, reject) => {
     const script = document.createElement("script");
     script.src = `${TMAP_SDK_URL}?version=1&appKey=${appKey}`;
-    script.async = true;
+    // Tmap SDK calls document.write() internally while it runs. Dynamically-created
+    // <script> elements default to async=true, which Chrome refuses to let call
+    // document.write ("Failed to execute 'write' on 'Document': It isn't possible
+    // to write into a document from an asynchronously-loaded external script").
+    // Explicitly setting async=false restores in-order/document.write-eligible
+    // execution semantics without blocking initial page parsing (the tag is
+    // appended long after the document has already loaded).
+    script.async = false;
     script.onload = () => {
       resolve(window.Tmapv2!);
     };
