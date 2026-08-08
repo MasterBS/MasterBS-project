@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe: sso-login</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://unpkg.com/lucide@0.576.0"></script>
+<style>
+  :root {
+    --w-bg: #f5f5f5;
+    --w-border: #ccc;
+    --w-text: #555;
+    --w-muted: #aaa;
+    --w-fill: #eee;
+  }
+
+  * {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--w-text);
+  }
+
+  body { background: var(--w-bg); }
+
+  /* Screen nav */
+  nav { position: sticky; top: 0; z-index: 40; background: var(--w-bg); border-bottom: 1px solid var(--w-border); }
+  nav button { cursor: pointer; font-size: 13px; }
+  nav button:hover { background: var(--w-fill); border-radius: 4px; }
+  nav button.active { font-weight: bold; border-bottom: 2px solid var(--w-text); }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* 화면 간 전환 배선: data-goto 속성을 단 요소는 클릭 시 해당 화면으로 이동 */
+  [data-goto] { cursor: pointer; }
+  [data-goto]::after { content: " ↗"; color: var(--w-muted); }
+  [data-goto]:hover { outline: 2px solid var(--w-text); outline-offset: 2px; }
+
+  /* 화면 밖 진입 조건 한 줄 (템플릿 크롬) */
+  .screen-entry { font-size: 12px; color: var(--w-muted); margin: -12px 0 16px; }
+
+  /* Viewport toggle */
+  .vp-toggle button {
+    font-size: 12px; padding: 2px 8px;
+    border: 1px solid var(--w-border); cursor: pointer; background: white;
+  }
+  .vp-toggle button:first-child { border-radius: 4px 0 0 4px; }
+  .vp-toggle button:last-child { border-radius: 0 4px 4px 0; border-left: none; }
+  .vp-toggle button.active { background: var(--w-text); color: white; }
+
+  /* Mobile viewport frame */
+  body.viewport-mobile .screen-content {
+    max-width: 375px;
+    margin: 24px auto;
+    border: 2px solid var(--w-border);
+    min-height: 667px;
+    background: white;
+  }
+
+  .w-icon-btn {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    border: 1px solid var(--w-border);
+    background: white;
+  }
+  .w-icon-btn[data-active="true"] {
+    background: var(--w-fill);
+  }
+  .w-icon-btn i { width: 18px; height: 18px; }
+
+  .w-station-card {
+    border: 1px solid var(--w-border);
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .w-rank {
+    width: 24px; height: 24px; border-radius: 999px;
+    background: var(--w-text); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: bold; flex-shrink: 0;
+  }
+  .w-heart { flex-shrink: 0; }
+  .w-heart i { width: 18px; height: 18px; }
+  .w-heart[data-filled="true"] i { fill: var(--w-text); }
+
+  .w-provider-btn {
+    width: 100%;
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px; border: 1px solid var(--w-border); border-radius: 8px;
+    background: white; text-align: left;
+  }
+</style>
+</head>
+<body class="p-0 m-0 viewport-mobile">
+
+<nav class="flex items-center gap-4 px-6 py-2">
+  <span class="text-xs" style="color:var(--w-muted)">wireframe: sso-login</span>
+  <button id="nav-main-loggedout" onclick="show('main-loggedout')" class="px-2 py-1">메인 (비로그인)</button>
+  <button id="nav-login-picker" onclick="show('login-picker')" class="px-2 py-1">로그인 선택</button>
+  <button id="nav-main-loggedin" onclick="show('main-loggedin')" class="px-2 py-1">메인 (로그인)</button>
+  <button id="nav-profile-menu" onclick="show('profile-menu')" class="px-2 py-1">프로필 메뉴</button>
+  <button id="nav-favorites" onclick="show('favorites')" class="px-2 py-1">즐겨찾기 목록</button>
+  <button id="nav-favorites-empty" onclick="show('favorites-empty')" class="px-2 py-1">즐겨찾기 (빈 상태)</button>
+  <div class="vp-toggle flex ml-auto">
+    <button id="vp-desktop" onclick="setViewport('desktop')">Desktop</button>
+    <button id="vp-mobile" onclick="setViewport('mobile')" class="active">Mobile</button>
+  </div>
+</nav>
+
+<!-- 메인 화면 - 비로그인: 로그인 진입점 노출(S1), 로그인 실패/취소 후 복귀(S3), 로그아웃 직후(S4), 하트 없음(S8) -->
+<div id="screen-main-loggedout" class="screen active" data-scenario="S1 S3 S4 S8">
+  <div class="screen-content @container max-w-6xl mx-auto p-4">
+
+    <h2 class="text-lg font-bold mb-5" style="color:var(--w-muted); border-bottom:1px solid var(--w-border); padding-bottom:8px;">
+      메인 화면 — 비로그인
+    </h2>
+
+    <div class="flex items-center justify-between gap-2 mb-4">
+      <h1 class="text-base font-bold" style="color:var(--w-text)">내 주변 저가 주유소 TOP5</h1>
+      <div class="flex items-center gap-2">
+        <button class="w-icon-btn"><i data-lucide="settings"></i></button>
+        <button data-goto="screen-login-picker" class="w-icon-btn">
+          <i data-lucide="log-in"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="flex gap-2 mb-3">
+      <button class="px-3 py-1.5 text-xs rounded-md" style="border:1px solid var(--w-border); background:var(--w-fill)">휘발유</button>
+      <button class="px-3 py-1.5 text-xs rounded-md" style="border:1px solid var(--w-border)">경유</button>
+      <button class="px-3 py-1.5 text-xs rounded-md" style="border:1px solid var(--w-border)">LPG</button>
+    </div>
+
+    <ul class="flex flex-col gap-2">
+      <li class="w-station-card">
+        <span class="w-rank">1</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold truncate">구인주유소</p>
+          <p class="text-xs" style="color:var(--w-muted)">SK에너지 · 2.6km</p>
+        </div>
+        <div class="text-right shrink-0">
+          <div class="text-sm font-bold">1,834원</div>
+          <button class="mt-1 px-2 py-1 text-xs rounded-md" style="border:1px solid var(--w-border)">길찾기</button>
+        </div>
+      </li>
+      <li class="w-station-card">
+        <span class="w-rank">2</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold truncate">도림주유소</p>
+          <p class="text-xs" style="color:var(--w-muted)">자가상표/기타 · 1.3km</p>
+        </div>
+        <div class="text-right shrink-0">
+          <div class="text-sm font-bold">1,835원</div>
+          <button class="mt-1 px-2 py-1 text-xs rounded-md" style="border:1px solid var(--w-border)">길찾기</button>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<!-- 로그인 provider 선택 (S2) -->
+<div id="screen-login-picker" class="screen" data-scenario="S2">
+  <div class="screen-content @container max-w-6xl mx-auto p-4">
+
+    <h2 class="text-lg font-bold mb-5" style="color:var(--w-muted); border-bottom:1px solid var(--w-border); padding-bottom:8px;">
+      로그인 provider 선택
+    </h2>
+    <p class="screen-entry">진입: 메인 화면(비로그인)에서 로그인 아이콘 클릭</p>
+
+    <div class="flex flex-col gap-2">
+      <button data-goto="screen-main-loggedin" class="w-provider-btn">
+        <i data-lucide="message-circle"></i>
+        <span class="text-sm">카카오로 로그인</span>
+      </button>
+      <button data-goto="screen-main-loggedin" class="w-provider-btn">
+        <i data-lucide="square"></i>
+        <span class="text-sm">네이버로 로그인</span>
+      </button>
+      <button data-goto="screen-main-loggedin" class="w-provider-btn">
+        <i data-lucide="chrome"></i>
+        <span class="text-sm">구글로 로그인</span>
+      </button>
+      <button data-goto="screen-main-loggedin" class="w-provider-btn">
+        <i data-lucide="apple"></i>
+        <span class="text-sm">Apple로 로그인</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 메인 화면 - 로그인: 프로필 표시로 전환(S2), 하트 토글 가능(S7) -->
+<div id="screen-main-loggedin" class="screen" data-scenario="S2 S7">
+  <div class="screen-content @container max-w-6xl mx-auto p-4">
+
+    <h2 class="text-lg font-bold mb-5" style="color:var(--w-muted); border-bottom:1px solid var(--w-border); padding-bottom:8px;">
+      메인 화면 — 로그인
+    </h2>
+    <p class="screen-entry">진입: 로그인 provider 인증 성공 직후</p>
+
+    <div class="flex items-center justify-between gap-2 mb-4">
+      <h1 class="text-base font-bold" style="color:var(--w-text)">내 주변 저가 주유소 TOP5</h1>
+      <div class="flex items-center gap-2">
+        <button class="w-icon-btn"><i data-lucide="settings"></i></button>
+        <button data-goto="screen-favorites" class="w-icon-btn"><i data-lucide="heart"></i></button>
+        <button data-goto="screen-profile-menu" class="w-icon-btn" data-active="true"><i data-lucide="user"></i></button>
+      </div>
+    </div>
+
+    <div class="flex gap-2 mb-3">
+      <button class="px-3 py-1.5 text-xs rounded-md" style="border:1px solid var(--w-border); background:var(--w-fill)">휘발유</button>
+      <button class="px-3 py-1.5 text-xs rounded-md" style="border:1px solid var(--w-border)">경유</button>
+      <button class="px-3 py-1.5 text-xs rounded-md" style="border:1px solid var(--w-border)">LPG</button>
+    </div>
+
+    <ul class="flex flex-col gap-2">
+      <li class="w-station-card">
+        <span class="w-rank">1</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold truncate">구인주유소</p>
+          <p class="text-xs" style="color:var(--w-muted)">SK에너지 · 2.6km</p>
+        </div>
+        <button class="w-heart" data-filled="true"><i data-lucide="heart"></i></button>
+        <div class="text-right shrink-0">
+          <div class="text-sm font-bold">1,834원</div>
+          <button class="mt-1 px-2 py-1 text-xs rounded-md" style="border:1px solid var(--w-border)">길찾기</button>
+        </div>
+      </li>
+      <li class="w-station-card">
+        <span class="w-rank">2</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold truncate">도림주유소</p>
+          <p class="text-xs" style="color:var(--w-muted)">자가상표/기타 · 1.3km</p>
+        </div>
+        <button class="w-heart" data-filled="false"><i data-lucide="heart"></i></button>
+        <div class="text-right shrink-0">
+          <div class="text-sm font-bold">1,835원</div>
+          <button class="mt-1 px-2 py-1 text-xs rounded-md" style="border:1px solid var(--w-border)">길찾기</button>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<!-- 프로필 메뉴: 로그아웃 진입점(S4) -->
+<div id="screen-profile-menu" class="screen" data-scenario="S4">
+  <div class="screen-content @container max-w-6xl mx-auto p-4">
+
+    <h2 class="text-lg font-bold mb-5" style="color:var(--w-muted); border-bottom:1px solid var(--w-border); padding-bottom:8px;">
+      프로필 메뉴
+    </h2>
+    <p class="screen-entry">진입: 메인 화면(로그인)에서 프로필 아이콘 클릭</p>
+
+    <div class="flex items-center gap-3 mb-4 pb-4" style="border-bottom:1px solid var(--w-border)">
+      <div class="w-icon-btn" style="border-radius:999px">
+        <i data-lucide="user"></i>
+      </div>
+      <span class="text-sm">카카오 계정으로 로그인됨</span>
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <button data-goto="screen-favorites" class="w-provider-btn">
+        <i data-lucide="heart"></i>
+        <span class="text-sm">즐겨찾기 목록</span>
+      </button>
+      <button data-goto="screen-main-loggedout" class="w-provider-btn">
+        <i data-lucide="log-out"></i>
+        <span class="text-sm">로그아웃</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 즐겨찾기 목록 (항목 있음) (S9) -->
+<div id="screen-favorites" class="screen" data-scenario="S9">
+  <div class="screen-content @container max-w-6xl mx-auto p-4">
+
+    <h2 class="text-lg font-bold mb-5" style="color:var(--w-muted); border-bottom:1px solid var(--w-border); padding-bottom:8px;">
+      즐겨찾기 목록
+    </h2>
+    <p class="screen-entry">진입: 프로필 메뉴 또는 메인 화면(로그인)의 하트 아이콘</p>
+
+    <ul class="flex flex-col gap-2">
+      <li class="w-station-card">
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold truncate">구인주유소</p>
+          <p class="text-xs" style="color:var(--w-muted)">SK에너지 · 2.6km · 1,834원</p>
+        </div>
+        <button class="w-heart" data-filled="true"><i data-lucide="heart"></i></button>
+      </li>
+      <li class="w-station-card">
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold truncate">영등포제일셀프주유소</p>
+          <p class="text-xs" style="color:var(--w-muted)">HD현대오일뱅크 · 1.9km · 1,835원</p>
+        </div>
+        <button class="w-heart" data-filled="true"><i data-lucide="heart"></i></button>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<!-- 즐겨찾기 목록 (빈 상태) (S9) -->
+<div id="screen-favorites-empty" class="screen" data-scenario="S9">
+  <div class="screen-content @container max-w-6xl mx-auto p-4">
+
+    <h2 class="text-lg font-bold mb-5" style="color:var(--w-muted); border-bottom:1px solid var(--w-border); padding-bottom:8px;">
+      즐겨찾기 목록 — 빈 상태
+    </h2>
+    <p class="screen-entry">진입: 즐겨찾은 주유소가 하나도 없는 상태에서 즐겨찾기 목록 진입</p>
+
+    <div class="flex flex-col items-center justify-center gap-2 py-16 text-center">
+      <i data-lucide="heart" style="width:32px;height:32px;color:var(--w-muted)"></i>
+      <p class="text-sm" style="color:var(--w-muted)">즐겨찾은 주유소가 없어요</p>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+  document.getElementById('screen-' + id).classList.add('active');
+  document.querySelectorAll('nav button[id^="nav-"]').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('nav-' + id).classList.add('active');
+}
+
+function setViewport(mode) {
+  document.body.classList.remove('viewport-mobile', 'viewport-desktop');
+  document.body.classList.add('viewport-' + mode);
+  document.querySelectorAll('.vp-toggle button').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('vp-' + mode).classList.add('active');
+}
+
+document.addEventListener('click', function(e) {
+  var target = e.target.closest('[data-goto]');
+  if (target) show(target.getAttribute('data-goto').replace('screen-', ''));
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  var first = document.querySelector('nav button[id^="nav-"]');
+  if (first) first.click();
+  lucide.createIcons();
+});
+</script>
+</body>
+</html>
