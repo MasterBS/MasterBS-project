@@ -28,7 +28,7 @@ describe("loadTmapMaps [tmap]", () => {
     await expect(promise).resolves.toBe(window.Tmapv2);
   });
 
-  it("[tmap] sets async=false on the script tag so the SDK's internal document.write() is allowed", async () => {
+  it("[tmap] sets async=false on the script tag for deterministic execution order relative to other dynamic scripts", async () => {
     const { loadTmapMaps } = await import("./tmap-loader");
 
     loadTmapMaps("test-app-key");
@@ -37,13 +37,47 @@ describe("loadTmapMaps [tmap]", () => {
     expect(script!.async).toBe(false);
   });
 
-  it("[tmap] appends to document.body, not document.head (React 19 hoists/dedupes head scripts and overrides async=false there)", async () => {
+  it("[tmap] appends to document.body, not document.head", async () => {
     const { loadTmapMaps } = await import("./tmap-loader");
 
     loadTmapMaps("test-app-key");
 
     expect(document.head.querySelector("script")).toBeNull();
     expect(document.body.querySelector("script")).not.toBeNull();
+  });
+
+  it("[tmap] overrides document.write/writeln while the script is loading so the SDK's internal calls don't throw, then restores them on load", async () => {
+    const { loadTmapMaps } = await import("./tmap-loader");
+    const originalWrite = document.write;
+    const originalWriteln = document.writeln;
+
+    const promise = loadTmapMaps("test-app-key");
+    const script = document.body.querySelector("script")!;
+
+    expect(document.write).not.toBe(originalWrite);
+    expect(document.writeln).not.toBe(originalWriteln);
+    expect(() => document.write("<div id='sdk-injected'></div>")).not.toThrow();
+    expect(document.getElementById("sdk-injected")).not.toBeNull();
+
+    // @ts-expect-error - simulating what the real SDK script does on load
+    window.Tmapv2 = { Map: class {} };
+    script.onload?.(new Event("load"));
+    await promise;
+
+    expect(document.write).toBe(originalWrite);
+    expect(document.writeln).toBe(originalWriteln);
+  });
+
+  it("[tmap] restores document.write/writeln when the script fails to load", async () => {
+    const { loadTmapMaps } = await import("./tmap-loader");
+    const originalWrite = document.write;
+
+    const promise = loadTmapMaps("test-app-key");
+    const script = document.body.querySelector("script")!;
+    script.onerror?.(new Event("error"));
+
+    await expect(promise).rejects.toThrow();
+    expect(document.write).toBe(originalWrite);
   });
 
   it("[tmap] does not append a second script tag for a concurrent call while loading", async () => {
