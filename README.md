@@ -70,6 +70,10 @@ Claude Code hooks 기반 자동 품질 게이트 (`.claude/settings.json`)
 - `NEXT_PUBLIC_TMAP_APP_KEY=<your-tmap-app-key>` (openapi.sk.com 콘솔에서 앱 생성 후 TMAP 상품 등록, appKey 발급)
 - `SUPABASE_URL=<your-supabase-project-url>` (Supabase 프로젝트 설정 > API에서 발급, 서버 전용)
 - `SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>` (Supabase 프로젝트 설정 > API에서 발급, 서버 전용 — 절대 클라이언트에 노출 금지. `supabase/migrations/`의 SQL을 Supabase SQL Editor에서 실행해 `user_settings`/`favorites` 테이블을 먼저 생성해야 함)
+- `NEXTAUTH_SECRET=<random-32byte-secret>` (`openssl rand -base64 32`로 생성)
+- `KAKAO_CLIENT_ID` / `KAKAO_CLIENT_SECRET` (developers.kakao.com 콘솔에서 **로그인용** OAuth 앱을 새로 생성 — 기존 지도 SDK 키와 다른 앱, 콜백 URL `<배포 도메인>/api/auth/callback/kakao` 등록 필요)
+- `NAVER_CLIENT_ID` / `NAVER_CLIENT_SECRET` (developers.naver.com 콘솔에서 **로그인용** OAuth 앱을 새로 생성 — 기존 지도 SDK 키와 다른 앱, 콜백 URL `<배포 도메인>/api/auth/callback/naver` 등록 필요)
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (Google Cloud 콘솔에서 OAuth 클라이언트 생성, 콜백 URL `<배포 도메인>/api/auth/callback/google` 등록 필요)
 
 로컬 개발 시에는 `.env.local` 파일을 생성하고 `.env.example`를 참조할 수 있습니다.
 ## Claude Code 워크플로우
