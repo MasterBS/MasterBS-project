@@ -82,4 +82,39 @@ describe("GET/POST /api/favorites [sso-login] [favorites-route]", () => {
     expect(body).toEqual({ favorited: true });
     expect(toggleFavoriteMock).toHaveBeenCalledWith("kakao:123", snapshot);
   });
+
+  it("POST returns 400 and does not toggle when stationUniId is missing", async () => {
+    authMock.mockResolvedValue({ userKey: "kakao:123" });
+
+    const res = await POST(
+      new Request("http://localhost/api/favorites", {
+        method: "POST",
+        body: JSON.stringify({ name: "구인주유소", brandLabel: "SK에너지", lat: 37.5, lng: 127.0, price: 1834 }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(toggleFavoriteMock).not.toHaveBeenCalled();
+  });
+
+  it("POST returns 400 and does not toggle when lat/lng/price are not numbers", async () => {
+    authMock.mockResolvedValue({ userKey: "kakao:123" });
+
+    const res = await POST(
+      new Request("http://localhost/api/favorites", {
+        method: "POST",
+        body: JSON.stringify({
+          stationUniId: "A0001234",
+          name: "구인주유소",
+          brandLabel: "SK에너지",
+          lat: "not-a-number",
+          lng: 127.0,
+          price: 1834,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(toggleFavoriteMock).not.toHaveBeenCalled();
+  });
 });

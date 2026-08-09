@@ -114,3 +114,35 @@ date: 2026-08-09
 5. **Important, 부분 반영**: `services/favorites.ts`의 `toggleFavorite`가 select-then-insert/delete로 원자적이지 않아 동시 요청(연속 더블클릭)이 unique 제약을 건드릴 수 있었다. 가장 흔한 경우(같은 버튼 더블클릭)는 `FavoriteButton`에 `pending` 상태로 버튼을 막아 방지했다 — 여러 탭/기기에서 동시에 같은 항목을 토글하는 진짜 레이스는 여전히 남아있다(서버 쪽 원자적 upsert로 근본 해결 가능하지만 이번 실행에서는 범위 밖으로 판단해 손대지 않음).
 
 **증거**: 위 5개 항목에 대응하는 각 파일의 diff와 신규/수정 테스트(`hooks/use-map-provider.test.ts`, `hooks/use-account-filters.test.ts`, `components/gas/favorites-list.test.tsx`, `components/gas/favorite-button.test.tsx`, `app/api/user-settings/route.test.ts`, `app/page.test.tsx`), `bun run test`(168 tests 통과), `bun run typecheck`, `bun run build`, `scripts/spec-coverage.sh sso-login --tests`(커버리지 OK 유지).
+
+---
+
+---
+triggers: [POST /api/favorites 검증 없음, FavoriteSnapshotInput as 캐스팅, user-settings route와 비대칭, 사후 검증 fix]
+status: verified
+scope: this-repo (app/api/favorites/route.ts)
+date: 2026-08-09
+---
+## 자매 Route Handler끼리 입력 검증 수준이 다를 수 있다 — 하나에 패턴을 적용했으면 나머지도 직접 확인한다
+
+**지시문**: `/code-review` Step 4가 `app/api/user-settings/route.ts`에 입력 검증을 추가했다고 보고해도, 같은 세션에서 만든 자매 라우트(`app/api/favorites/route.ts`)까지 같은 처리가 됐는지는 별도로 확인해야 한다. `execute-plan`/`code-review`의 자체 보고는 "무엇을 했는지"이지 "구조적으로 유사한 다른 파일도 같은 기준을 만족하는지"는 아니다 — 이번에 `POST /api/favorites`가 body를 `as FavoriteSnapshotInput`로 캐스팅만 하고 런타임 검증 없이 그대로 Supabase insert에 넘기는 걸 발견했다(잘못된 타입이 오면 처리되지 않은 예외로 500이 남, `user-settings`는 400을 반환하는 것과 비대칭).
+
+**에피소드**: execute-plan 백그라운드 에이전트의 최종 보고에는 "Step 4에서 5개 findings 중 4개 fix(입력 검증 포함)"라고만 적혀 있어 `favorites` route도 포함된 줄 알았으나, `lib/auth.ts`/`lib/supabase.ts`/두 Route Handler를 직접 읽어보니 `user-settings`만 `validatePartial()`을 갖고 있었다. `validateSnapshot()`을 같은 패턴(문자열/숫자 타입 체크, 400 반환)으로 추가하고 회귀 테스트 2개(`stationUniId` 누락, `lat`이 숫자가 아님)를 붙였다.
+
+**증거**: `app/api/favorites/route.ts`의 `validateSnapshot()`, `app/api/favorites/route.test.ts`의 "returns 400 and does not toggle" 테스트 2개, `bun run test`(170/170), `bun run typecheck` 통과.
+
+---
+
+---
+triggers: [bun install 후 playwright 버전 올라감, chromium revision mismatch 재발, session-local playwright-core 사라짐, "^1.52.0" resolve 최신, execute-plan 이후 bun install]
+status: verified
+scope: this-repo (execute-plan 백그라운드 세션 종료 후 새 세션/새 bun install 시)
+date: 2026-08-09
+---
+## execute-plan이 세션 로컬로 맞춰둔 playwright 버전은 그 세션이 끝나면 사라진다 — 검증하는 사람이 다시 bun install하면 재발한다
+
+**지시문**: `tmap-provider-integration/learnings.md`(Playwright 브라우저 재다운로드 불가 항목)의 우회법은 `bun add playwright@<v> @playwright/test@<v> --no-save`로 **그 프로세스의 `node_modules`에만** 적용된다. 같은 저장소를 다른 세션/에이전트가 이어받아 `bun install`을 다시 돌리면(예: 새 의존성이 추가된 걸 반영하려고) `package.json`의 `^1.52.0` 범위가 다시 최신 patch로 resolve되어 사전 설치된 chromium revision(1194)과 어긋난다. `execute-plan` 실행이 끝난 뒤 결과를 검증하는 세션은, e2e를 돌리기 전에 `node_modules/playwright-core/package.json`의 버전과 `browsers.json`의 요구 revision을 먼저 확인하고, 어긋나면 같은 `--no-save` 우회를 다시 적용해야 한다.
+
+**에피소드**: sso-login execute-plan 에이전트는 "test:e2e 12/12 통과"를 보고했고 실제로 그 세션 안에서는 맞았을 것이다. 검증 세션에서 새 의존성(`@supabase/supabase-js`, `next-auth`)을 받으려고 `bun install`을 돌리자 playwright가 1.59.1로 올라갔고(revision 1217 요구), `bun run test:e2e`가 실행 자체는 되지만 실 브라우저를 못 찾는 상태가 됐다. `playwright@1.56.0`/`@playwright/test@1.56.0`을 `--no-save`로 재설치해 revision 1194와 다시 맞춘 뒤 12/12 통과를 직접 재현했다.
+
+**증거**: `bun install` 직후 `node_modules/playwright-core/package.json`이 `1.59.1`이었던 것, `node -e "require('./node_modules/playwright-core/browsers.json')..."`로 확인한 요구 revision `1217` vs `/opt/pw-browsers`에 실재하는 `1194`, `playwright@1.56.0` 재설치 후 `bun run test:e2e -- sso-login` 12/12 통과 재현.
