@@ -34,7 +34,10 @@ export function useAccountFilters() {
     let cancelled = false;
 
     fetch("/api/user-settings")
-      .then((res) => res.json() as Promise<UserSettings | null>)
+      .then((res) => {
+        if (!res.ok) throw new Error(`계정 설정 조회 실패: ${res.status}`);
+        return res.json() as Promise<UserSettings | null>;
+      })
       .then((settings) => {
         if (cancelled) return;
         setState({
@@ -42,6 +45,12 @@ export function useAccountFilters() {
           fuel: settings?.fuelType ?? "gasoline",
           brands: settings?.brands ?? BRAND_KEYS,
         });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // 이 필터는 검색 화면 렌더를 막지 않는다(기본값으로 이미 동작 중) - 조회가
+        // 실패해도 기본값을 유지한 채 "loaded"로 넘어가 무한 로딩/미처리 rejection을 피한다.
+        setState((s) => ({ ...s, status: "loaded" }));
       });
 
     return () => {

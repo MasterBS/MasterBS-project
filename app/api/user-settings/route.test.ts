@@ -91,4 +91,61 @@ describe("GET/PUT /api/user-settings [sso-login] [user-settings-route]", () => {
     expect(body).toEqual(SETTINGS);
     expect(upsertUserSettingsMock).toHaveBeenCalledWith("kakao:123", { mapProvider: "naver" });
   });
+
+  it("PUT returns 400 and does not upsert when mapProvider is not a known provider", async () => {
+    authMock.mockResolvedValue({ userKey: "kakao:123" });
+
+    const res = await PUT(
+      new Request("http://localhost/api/user-settings", {
+        method: "PUT",
+        body: JSON.stringify({ mapProvider: "bing" }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(upsertUserSettingsMock).not.toHaveBeenCalled();
+  });
+
+  it("PUT returns 400 and does not upsert when fuelType is unknown", async () => {
+    authMock.mockResolvedValue({ userKey: "kakao:123" });
+
+    const res = await PUT(
+      new Request("http://localhost/api/user-settings", {
+        method: "PUT",
+        body: JSON.stringify({ fuelType: "hydrogen" }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(upsertUserSettingsMock).not.toHaveBeenCalled();
+  });
+
+  it("PUT returns 400 and does not upsert when brands contains an unknown value", async () => {
+    authMock.mockResolvedValue({ userKey: "kakao:123" });
+
+    const res = await PUT(
+      new Request("http://localhost/api/user-settings", {
+        method: "PUT",
+        body: JSON.stringify({ brands: ["SKE", "NOT_A_BRAND"] }),
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(upsertUserSettingsMock).not.toHaveBeenCalled();
+  });
+
+  it("PUT accepts mapProvider: null", async () => {
+    authMock.mockResolvedValue({ userKey: "kakao:123" });
+    upsertUserSettingsMock.mockResolvedValue({ ...SETTINGS, mapProvider: null });
+
+    const res = await PUT(
+      new Request("http://localhost/api/user-settings", {
+        method: "PUT",
+        body: JSON.stringify({ mapProvider: null }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(upsertUserSettingsMock).toHaveBeenCalledWith("kakao:123", { mapProvider: null });
+  });
 });

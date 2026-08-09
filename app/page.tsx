@@ -19,6 +19,7 @@ import { LoginGate } from "@/components/auth/login-gate";
 import { MapProviderPicker } from "@/components/auth/map-provider-picker";
 import { ProfileMenu } from "@/components/auth/profile-menu";
 import {
+  AccountErrorMessage,
   ApiErrorMessage,
   EmptyResultsMessage,
   LocationDeniedMessage,
@@ -177,6 +178,13 @@ function AuthenticatedApp() {
   const mapProviderState = useMapProvider();
 
   if (mapProviderState.status === "loading") return <FullPageSpinner />;
+  if (mapProviderState.status === "error") {
+    return (
+      <main className="mx-auto max-w-sm p-4">
+        <AccountErrorMessage onRetry={mapProviderState.retry} />
+      </main>
+    );
+  }
   if (mapProviderState.provider === null) {
     return <MapProviderPicker onSelect={mapProviderState.setProvider} />;
   }

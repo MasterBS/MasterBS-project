@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { HeartIcon, Loader2Icon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { AccountErrorMessage } from "@/components/gas/status-message";
 import type { Favorite } from "@/types/favorite";
 
-type FavoritesListState = { status: "loading" | "loaded"; favorites: Favorite[] };
+type FavoritesListState =
+  | { status: "loading" | "error"; favorites: Favorite[] }
+  | { status: "loaded"; favorites: Favorite[] };
 
 function formatPrice(price: number): string {
   return `${price.toLocaleString("ko-KR")}원`;
@@ -13,21 +16,32 @@ function formatPrice(price: number): string {
 
 export function FavoritesList() {
   const [state, setState] = useState<FavoritesListState>({ status: "loading", favorites: [] });
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setState((s) => (s.status === "error" ? { status: "loading", favorites: [] } : s));
 
     fetch("/api/favorites")
-      .then((res) => res.json() as Promise<Favorite[]>)
+      .then((res) => {
+        if (!res.ok) throw new Error(`favorites 조회 실패: ${res.status}`);
+        return res.json() as Promise<Favorite[]>;
+      })
       .then((favorites) => {
         if (cancelled) return;
         setState({ status: "loaded", favorites });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setState({ status: "error", favorites: [] });
       });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryCount]);
+
+  const retry = useCallback(() => setRetryCount((c) => c + 1), []);
 
   if (state.status === "loading") {
     return (
@@ -35,6 +49,10 @@ export function FavoritesList() {
         <Loader2Icon className="size-8 animate-spin" aria-hidden="true" />
       </div>
     );
+  }
+
+  if (state.status === "error") {
+    return <AccountErrorMessage onRetry={retry} />;
   }
 
   if (state.favorites.length === 0) {

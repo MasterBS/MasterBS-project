@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { FavoritesList } from "./favorites-list";
 import type { Favorite } from "@/types/favorite";
 
@@ -41,7 +42,7 @@ describe("FavoritesList [sso-login S9-1][S9-1][sso-login S9-2][S9-2]", () => {
   });
 
   it("[sso-login S9-1][S9-1] shows only the favorited stations from GET /api/favorites", async () => {
-    fetchMock.mockResolvedValue({ json: () => Promise.resolve(FAVORITES) });
+    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve(FAVORITES) });
 
     render(<FavoritesList />);
 
@@ -52,10 +53,24 @@ describe("FavoritesList [sso-login S9-1][S9-1][sso-login S9-2][S9-2]", () => {
   });
 
   it("[sso-login S9-2][S9-2] shows the empty-state message when there are no favorites", async () => {
-    fetchMock.mockResolvedValue({ json: () => Promise.resolve([]) });
+    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
 
     render(<FavoritesList />);
 
     await waitFor(() => expect(screen.getByText("즐겨찾은 주유소가 없어요")).toBeInTheDocument());
+  });
+
+  it("shows a retryable error message when the request fails, and retry() re-fetches", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 500, json: () => Promise.resolve(null) });
+
+    render(<FavoritesList />);
+
+    await waitFor(() => expect(screen.getByText("계정 정보를 불러오지 못했어요")).toBeInTheDocument());
+
+    fetchMock.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(FAVORITES) });
+    await user.click(screen.getByRole("button", { name: "다시 시도" }));
+
+    expect(await screen.findByText("구인주유소")).toBeInTheDocument();
   });
 });

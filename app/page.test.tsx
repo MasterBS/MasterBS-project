@@ -475,6 +475,20 @@ describe("Page map provider branching [sso-login S11][S11][sso-login S12-1][S12-
     expect(screen.queryByText("내 주변 저가 주유소 TOP5")).not.toBeInTheDocument();
     expect(useGeolocationMock).not.toHaveBeenCalled();
   });
+
+  it("shows a retryable error message when the account's map provider fails to load", async () => {
+    const user = userEvent.setup();
+    const retry = vi.fn();
+    useMapProviderMock.mockReturnValue({ status: "error", provider: null, setProvider: vi.fn(), retry });
+
+    render(<Page />);
+
+    expect(screen.getByText("계정 정보를 불러오지 못했어요")).toBeInTheDocument();
+    expect(useGeolocationMock).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "다시 시도" }));
+    expect(retry).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("Page favorites view [sso-login S9-1][S9-1]", () => {

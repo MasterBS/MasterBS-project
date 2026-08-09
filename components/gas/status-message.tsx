@@ -47,3 +47,17 @@ export function ApiErrorMessage({ onRetry }: { onRetry: () => void }) {
     </div>
   );
 }
+
+export function AccountErrorMessage({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+      <TriangleAlertIcon className="size-8" aria-hidden="true" />
+      <span className="text-sm">계정 정보를 불러오지 못했어요</span>
+      <span className="text-xs text-muted-foreground">잠시 후 다시 시도해주세요</span>
+      <Button type="button" className="mt-2" onClick={onRetry}>
+        <RotateCwIcon data-icon="inline-start" aria-hidden="true" />
+        다시 시도
+      </Button>
+    </div>
+  );
+}

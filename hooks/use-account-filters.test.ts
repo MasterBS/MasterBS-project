@@ -15,7 +15,7 @@ describe("useAccountFilters [sso-login S5][S5][sso-login S6][S6]", () => {
   });
 
   it("starts with gasoline + all brands before the account fetch resolves", () => {
-    fetchMock.mockResolvedValue({ json: () => Promise.resolve(null) });
+    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve(null) });
 
     const { result } = renderHook(() => useAccountFilters());
 
@@ -25,7 +25,7 @@ describe("useAccountFilters [sso-login S5][S5][sso-login S6][S6]", () => {
   });
 
   it("[sso-login S5][S5] keeps device defaults when the account has no saved filters yet (first login)", async () => {
-    fetchMock.mockResolvedValue({ json: () => Promise.resolve(null) });
+    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve(null) });
 
     const { result } = renderHook(() => useAccountFilters());
 
@@ -35,8 +35,8 @@ describe("useAccountFilters [sso-login S5][S5][sso-login S6][S6]", () => {
   });
 
   it("[sso-login S5][S5] setFuel/setBrands optimistically update and PUT the change to the account", async () => {
-    fetchMock.mockResolvedValueOnce({ json: () => Promise.resolve(null) });
-    fetchMock.mockResolvedValue({ json: () => Promise.resolve({}) });
+    fetchMock.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(null) });
+    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
 
     const { result } = renderHook(() => useAccountFilters());
     await waitFor(() => expect(result.current.status).toBe("loaded"));
@@ -62,6 +62,7 @@ describe("useAccountFilters [sso-login S5][S5][sso-login S6][S6]", () => {
 
   it("[sso-login S6][S6] applies the account's saved filters (from another device) once loaded", async () => {
     fetchMock.mockResolvedValue({
+      ok: true,
       json: () =>
         Promise.resolve({
           userKey: "kakao:1",
@@ -77,5 +78,15 @@ describe("useAccountFilters [sso-login S5][S5][sso-login S6][S6]", () => {
     await waitFor(() => expect(result.current.status).toBe("loaded"));
     expect(result.current.fuel).toBe("diesel");
     expect(result.current.brands).toEqual(["GSC", "HDO"]);
+  });
+
+  it("falls back to device defaults (still 'loaded', no hang) when the account fetch fails", async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 500, json: () => Promise.resolve(null) });
+
+    const { result } = renderHook(() => useAccountFilters());
+
+    await waitFor(() => expect(result.current.status).toBe("loaded"));
+    expect(result.current.fuel).toBe("gasoline");
+    expect(result.current.brands).toEqual(["SKE", "GSC", "HDO", "SOL", "ETC"]);
   });
 });

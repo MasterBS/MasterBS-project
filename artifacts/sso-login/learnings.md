@@ -82,3 +82,35 @@ date: 2026-08-09
 **지시문**: 어떤 Task가 이전 Task의 설계(여기서는 `hooks/use-map-provider.ts`의 `setProvider`가 낙관적 업데이트 + PUT을 항상 함께 수행)로 인해 이미 저절로 충족돼 있다면, 억지로 코드를 다시 건드리지 않는다. 대신 그 사실을 실행 증거(테스트)로 명시적으로 증명하는 새 테스트를 추가해 "우연이 아니라 의도된 재사용"임을 남긴다.
 **에피소드**: `components/gas/settings-sheet.tsx`는 `onProviderChange` prop만 호출하는 순수 프레젠테이션 컴포넌트이고, `app/page.tsx`가 여기에 넘기는 함수는 Task 5에서 만든 `useMapProvider()`의 `setProvider`(계정 PUT 포함) 그 자체다 - `MapProviderPicker`(최초 선택)와 `SettingsSheet`(재선택)가 정확히 같은 함수를 공유한다. 그래서 Task 8은 프로덕션 코드를 전혀 바꾸지 않고, `e2e/sso-login.spec.ts`에 "설정 화면에서 지도 provider를 다시 고르면 그 변경도 계정에 저장된다" 테스트 하나만 추가해 실 브라우저에서 PUT 요청 바디를 직접 확인했다.
 **증거**: `e2e/sso-login.spec.ts`의 해당 테스트(PUT 바디가 `{ mapProvider: "kakao" }`인지 `expect.poll`로 확인), `bun run test:e2e -- sso-login`(8/8 통과).
+
+---
+triggers: [setState 함수형 업데이터, useState updater 타이밍, previous state race, "expected null to be", 낙관적 업데이트 되돌리기, optimistic update revert 실패, 이미 resolve된 Promise 테스트]
+status: verified
+scope: this-repo (React 19, vitest + @testing-library/react — 이미 resolve된 mock Promise를 쓰는 테스트에서 재현)
+date: 2026-08-09
+---
+## setState(updaterFn) 안에서 부수효과로 값을 캡처하면, 이미 resolve된 mock Promise의 .then/.catch가 그 업데이터보다 먼저 실행될 수 있다
+
+**지시문**: "현재 상태를 나중에 쓰려고 `setState((s) => { capturedVar = s.x; return {...}; })`처럼 클로저 변수에 부수효과로 담아두는" 패턴을 async 흐름(특히 즉시 resolve되는 mock Promise를 쓰는 테스트)과 섞지 않는다. React는 그 업데이터 함수를 호출 시점에 동기적으로 실행한다고 보장하지 않는다 — 실제 다음 렌더 커밋 시점에 호출될 수 있고, 이미 resolve된 Promise의 `.then()/.catch()`가 microtask 큐에서 그보다 먼저 실행되는 경우가 있다(관찰됨: 콘솔 로그 순서가 "setState 호출" → "`.then`/`.catch` 실행(capturedVar 아직 초기값)" → "업데이터 함수 실행(뒤늦게 capturedVar 대입)"). 대신 캡처가 필요한 이전 값은 **호출 시점에 동기적으로 직접 읽는다**: 훅의 클로저에 있는 `state.x`를 그대로 읽고(예: `const previous = state.x;`), 그 값이 최신이 되도록 해당 콜백을 `useCallback(fn, [state.x])`처럼 관련 state를 deps에 넣어 매 렌더마다 재생성한다. `[]` deps로 고정한 채 함수형 업데이터의 부수효과에 의존하지 않는다.
+**에피소드**: `hooks/use-map-provider.ts`의 `setProvider`에 "PUT 실패 시 이전 provider로 되돌리기"(code-review Step 4 finding)를 추가하면서 `let previous; setState(s => { previous = s.provider; return {...}; })` 패턴을 썼는데, `hooks/use-map-provider.test.ts`의 revert 테스트가 계속 `expected null to be 'naver'`로 실패했다. 각 단계에 `console.log`를 심어 실행 순서를 직접 관찰하고 나서야("optimistic updater ran"이 "catch handler running, previous= null"보다 **늦게** 찍힘) 원인을 확정했다 — 테스트의 `fetchMock.mockResolvedValueOnce(...)`가 이미 resolve된 Promise라 `.then/.catch` 체인이 React의 실제 커밋 스케줄보다 먼저 도는 경우가 있었다. `previous`를 `state.provider`에서 직접 읽고 `setProvider`를 `[state.provider]` deps로 바꾸자 즉시 해결됐다(`hooks/use-map-provider.test.ts`의 "reverts to the previous provider when the PUT fails" 통과).
+**증거**: commit(Step 4 code-review fixes)의 `hooks/use-map-provider.ts` diff(`useCallback([], ...)` → `useCallback([state.provider], ...)`, 클로저 부수효과 제거), `hooks/use-map-provider.test.ts`의 revert 테스트, 디버그 세션의 `console.log` 순서 증거(재현 스크립트는 남기지 않음 — 원인 확정 후 제거).
+
+---
+triggers: [code-review Step 4, findings 판정, FavoriteButton 초기 즐겨찾기 상태, 하트 상태 재로드]
+status: verified
+scope: this-repo (execute-plan Step 4 — /code-review 실행 결과 판정)
+date: 2026-08-09
+---
+## Step 4 /code-review 실행 결과와 판정(Critical/Important/Suggestion)
+
+**지시문**: 이 feature에 다시 손댈 때, 아래 findings 중 미반영 항목(#1)을 먼저 검토한다.
+
+`/code-review --high`로 `origin/main`부터의 전체 diff를 검토했다(단일 패스, Agent 서브에이전트 팬아웃 없음). 5개 finding, 판정:
+
+1. **Important, 의도적으로 기각(scope-reject)**: `FavoriteButton`이 항상 `useState(false)`로 시작해 계정에 이미 저장된 즐겨찾기 상태를 반영하지 않는다(새로고침 후 실제로는 즐겨찾음인데 하트가 빈 채로 보임 → 다시 누르면 오히려 해제됨). plan.md Task 9의 구현 대상은 `favorite-button.tsx`(New)와 `station-list.tsx`(Modify)만 명시했고 초기 상태 하이드레이션(예: 목록 렌더 시 `GET /api/favorites`와 대조)은 범위에 없었다 — 이번 실행에서는 고치지 않고 다음 세션/feature의 할 일로 남긴다. 재발 시 `station-list.tsx`가 `favoritedStationIds: Set<string>` 같은 걸 상위(`app/page.tsx`)에서 받아 각 `FavoriteButton`의 초기값으로 넘기는 방식을 검토할 것.
+2. **Important, 반영**: `hooks/use-map-provider.ts`/`hooks/use-account-filters.ts`/`components/gas/favorites-list.tsx`의 `GET /api/user-settings`·`GET /api/favorites` fetch 체인에 `res.ok` 체크나 `.catch`가 없어 실패 시 영원히 로딩 상태에 머물거나(useMapProvider — 앱 전체가 멈춤) unhandled rejection이 남았다(useAccountFilters — UI는 기본값으로 계속 동작하지만 정리 안 된 rejection). `useMapProvider`/`FavoritesList`에 `"error"` 상태 + `retry()` + `AccountErrorMessage`(신규, `components/gas/status-message.tsx`)를 추가했고, `useAccountFilters`는 UI를 막지 않으므로 실패해도 기기 기본값으로 조용히 `"loaded"`로 전환하도록만 고쳤다(에러 UI 없음, rejection만 정리).
+3. **Important, 반영**: `setProvider`가 낙관적으로 업데이트한 뒤 PUT 실패를 검사하지 않아 계정에 반영 안 된 값을 UI가 계속 보여줄 수 있었다(다음 로그인 시 provider가 사라진 것처럼 보임). PUT 실패 시 되돌리도록 고쳤다(위 항목의 setState 타이밍 버그를 여기서 발견·수정).
+4. **Important, 반영**: `PUT /api/user-settings`가 body를 런타임 검증 없이 그대로 저장해 잘못된 `mapProvider`/`fuelType`/`brands` 값이 계정에 저장될 수 있었다. `app/api/user-settings/route.ts`에 검증을 추가해 알 수 없는 값은 400을 반환하도록 고쳤다(`app/api/stations/route.ts`의 기존 검증 패턴과 동일한 스타일).
+5. **Important, 부분 반영**: `services/favorites.ts`의 `toggleFavorite`가 select-then-insert/delete로 원자적이지 않아 동시 요청(연속 더블클릭)이 unique 제약을 건드릴 수 있었다. 가장 흔한 경우(같은 버튼 더블클릭)는 `FavoriteButton`에 `pending` 상태로 버튼을 막아 방지했다 — 여러 탭/기기에서 동시에 같은 항목을 토글하는 진짜 레이스는 여전히 남아있다(서버 쪽 원자적 upsert로 근본 해결 가능하지만 이번 실행에서는 범위 밖으로 판단해 손대지 않음).
+
+**증거**: 위 5개 항목에 대응하는 각 파일의 diff와 신규/수정 테스트(`hooks/use-map-provider.test.ts`, `hooks/use-account-filters.test.ts`, `components/gas/favorites-list.test.tsx`, `components/gas/favorite-button.test.tsx`, `app/api/user-settings/route.test.ts`, `app/page.test.tsx`), `bun run test`(168 tests 통과), `bun run typecheck`, `bun run build`, `scripts/spec-coverage.sh sso-login --tests`(커버리지 OK 유지).

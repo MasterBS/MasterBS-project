@@ -85,4 +85,28 @@ describe("FavoriteButton [sso-login S7-1][S7-1][sso-login S7-2][S7-2]", () => {
 
     expect(button).toHaveAttribute("aria-pressed", "false");
   });
+
+  it("disables the button while a toggle request is in flight, to avoid a double-click race", async () => {
+    const user = userEvent.setup();
+    let resolveFetch: (value: { ok: boolean; json: () => Promise<unknown> }) => void = () => {};
+    fetchMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    render(<FavoriteButton station={STATION} />);
+    const button = screen.getByRole("button", { name: "즐겨찾기" });
+
+    await user.click(button);
+    expect(button).toBeDisabled();
+
+    // 요청이 아직 안 끝났으니 같은 클릭이 두 번째 fetch를 만들면 안 된다
+    await user.click(button);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    resolveFetch({ ok: true, json: () => Promise.resolve({ favorited: true }) });
+    await screen.findByRole("button", { name: "즐겨찾기" });
+    expect(button).not.toBeDisabled();
+  });
 });
