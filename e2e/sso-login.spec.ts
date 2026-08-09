@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loginAs, stubUserSettings } from "./auth-helpers";
+import { loginAs, stubFavorites, stubUserSettings } from "./auth-helpers";
 
 // 실 카카오/네이버/구글 리다이렉트 없이, next-auth 세션 쿠키를 직접 주입/제거해
 // 로그인 게이트 분기를 증명한다 (artifacts/map-provider-selection/learnings.md의
@@ -170,7 +170,7 @@ test("[sso-login S7-1][S7-1][sso-login S7-2][S7-2] 하트를 누르면 즐겨찾
   });
 
   await page.goto("/");
-  const heart = page.getByRole("button", { name: "즐겨찾기" });
+  const heart = page.getByRole("button", { name: "즐겨찾기", exact: true });
   await expect(heart).toHaveAttribute("aria-pressed", "false");
 
   await heart.click();
@@ -178,6 +178,57 @@ test("[sso-login S7-1][S7-1][sso-login S7-2][S7-2] 하트를 누르면 즐겨찾
 
   await heart.click();
   await expect(heart).toHaveAttribute("aria-pressed", "false");
+});
+
+test("[sso-login S9-1][S9-1] 헤더 하트를 누르면 즐겨찾은 주유소만 모은 목록이 보인다", async ({ page, context }) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 37.5587543, longitude: 127.0008881 });
+  await loginAs(context, "kakao:e2e-sso-test");
+  await stubUserSettings(page, { mapProvider: "naver" });
+  await page.route("**/api/stations*", async (route) => {
+    await route.fulfill({ json: [] });
+  });
+  await page.route("**/api/favorites", async (route) => {
+    await route.fulfill({
+      json: [
+        {
+          id: "1",
+          userKey: "kakao:e2e-sso-test",
+          stationUniId: "A0001234",
+          name: "구인주유소",
+          brandLabel: "SK에너지",
+          lat: 37.5587543,
+          lng: 127.0008881,
+          price: 1834,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "즐겨찾기 목록" }).click();
+
+  await expect(page.getByText("구인주유소")).toBeVisible();
+  await expect(page.getByText("SK에너지 · 1,834원")).toBeVisible();
+});
+
+test("[sso-login S9-2][S9-2] 즐겨찾은 주유소가 없으면 빈 상태 안내 문구가 보인다", async ({ page, context }) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 37.5587543, longitude: 127.0008881 });
+  await loginAs(context, "kakao:e2e-sso-test");
+  await stubUserSettings(page, { mapProvider: "naver" });
+  await page.route("**/api/stations*", async (route) => {
+    await route.fulfill({ json: [] });
+  });
+  await page.route("**/api/favorites", async (route) => {
+    await route.fulfill({ json: [] });
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "즐겨찾기 목록" }).click();
+
+  await expect(page.getByText("즐겨찾은 주유소가 없어요")).toBeVisible();
 });
 
 test("[sso-login S14][S14] 로그아웃하면 로그인 화면으로 돌아가고 검색 화면에 다시 접근할 수 없다", async ({
@@ -210,4 +261,67 @@ test("[sso-login S14][S14] 로그아웃하면 로그인 화면으로 돌아가�
   await page.reload();
   await expect(page.getByText("로그인해야 이용할 수 있어요")).toBeVisible();
   await expect(page.getByRole("button", { name: "설정" })).not.toBeVisible();
+});
+
+// Checkpoint(Tasks 7~10): "필터 변경 → 로그아웃 → 재로그인 시 필터·즐겨찾기·지도 provider가
+// 모두 유지되는 전체 흐름"을 하나로 잇는다. stubUserSettings/stubFavorites는 page 레벨
+// 클로저에 상태를 들고 있어(실 Supabase 대신), 같은 page 안에서의 로그아웃→재로그인이면
+// "계정에 저장된 값"을 그대로 재현한다 - 진짜 재로그인(auth() 세션 재발급)까지 실 next-auth
+// signOut()으로 검증하고, 그 이후 상태 조회만 스텁이 대신한다.
+test("필터 변경 → 로그아웃 → 재로그인 시 필터·즐겨찾기·지도 provider가 모두 유지된다", async ({ page, context }) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 37.5587543, longitude: 127.0008881 });
+  const userKey = "kakao:e2e-persistence-test";
+  await loginAs(context, userKey);
+  await stubUserSettings(page, { mapProvider: null });
+  await stubFavorites(page);
+  await page.route("**/api/stations*", async (route) => {
+    await route.fulfill({
+      json: [
+        {
+          id: "A0001234",
+          name: "구인주유소",
+          brandCode: "SKE",
+          brandLabel: "SK에너지",
+          price: 1834,
+          distance: 2600,
+          lat: 37.5587543,
+          lng: 127.0008881,
+          isSelfEstimated: false,
+        },
+      ],
+    });
+  });
+
+  // 1) 최초 로그인 - provider 선택
+  await page.goto("/");
+  await page.getByRole("button", { name: "카카오맵" }).click();
+  await expect(page.getByText("내 주변 저가 주유소 TOP5")).toBeVisible();
+
+  // 2) 필터 변경(경유) + 즐겨찾기 추가
+  await page.getByRole("radio", { name: "경유" }).click();
+  await page.getByRole("button", { name: "즐겨찾기", exact: true }).click();
+  await expect(page.getByRole("button", { name: "즐겨찾기", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  // 3) 로그아웃(실 next-auth signOut())
+  await page.getByRole("button", { name: "프로필" }).click();
+  await page.getByText("로그아웃").click();
+  await expect(page.getByText("로그인해야 이용할 수 있어요")).toBeVisible();
+
+  // 4) 같은 계정으로 재로그인
+  await loginAs(context, userKey);
+  await page.goto("/");
+
+  // provider 선택 화면 없이 곧장 검색 화면(S13), 지도는 카카오맵으로
+  await expect(page.getByText("지도 provider를 선택하세요")).not.toBeVisible();
+  await expect(page.getByText("내 주변 저가 주유소 TOP5")).toBeVisible();
+  // 유종은 경유로 유지됨(S6과 동일한 메커니즘 - 계정에 저장된 값 적용)
+  await expect(page.getByRole("radio", { name: "경유" })).toHaveAttribute("aria-checked", "true");
+
+  // 즐겨찾기 목록에도 방금 추가한 항목이 그대로 남아있다(S7 이후 상태 유지)
+  await page.getByRole("button", { name: "즐겨찾기 목록" }).click();
+  await expect(page.getByText("구인주유소")).toBeVisible();
 });

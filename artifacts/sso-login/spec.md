@@ -60,8 +60,8 @@
 - **Given**: 로그인된 상태, 즐겨찾은 주유소가 1곳 이상 있음
 - **When**: 즐겨찾기 목록 진입점을 연다
 - **Then**
-  - [ ] S9-1 즐겨찾은 주유소만 모아서 보여준다
-  - [ ] S9-2 즐겨찾은 주유소가 하나도 없으면 빈 상태 안내 문구("즐겨찾은 주유소가 없어요"(제안 기본값))가 보인다
+  - [x] S9-1 즐겨찾은 주유소만 모아서 보여준다 — `components/gas/favorites-list.test.tsx`, `app/page.test.tsx`(뷰 전환), `e2e/sso-login.spec.ts`(실 Chromium)
+  - [x] S9-2 즐겨찾은 주유소가 하나도 없으면 빈 상태 안내 문구("즐겨찾은 주유소가 없어요"(제안 기본값))가 보인다 — `components/gas/favorites-list.test.tsx`, `e2e/sso-login.spec.ts`(실 Chromium)
 
 ### S10. 앱 진입 시 로그인 화면이 먼저 뜬다
 - **Given**: 로그인하지 않은 상태(세션 없음)
@@ -96,7 +96,7 @@
 
 ## 불변 규칙
 
-- [ ] INV-2 즐겨찾기 관련 UI(하트 아이콘, 즐겨찾기 목록)는 로그인 상태에서만 나타난다(로그인이 게이트이므로 항상 성립하지만, 하트가 없는 화면이 별도로 존재하지 않는지 확인하는 회귀 방지용) (S7, S9)
+- [x] INV-2 즐겨찾기 관련 UI(하트 아이콘, 즐겨찾기 목록)는 로그인 상태에서만 나타난다(로그인이 게이트이므로 항상 성립하지만, 하트가 없는 화면이 별도로 존재하지 않는지 확인하는 회귀 방지용) (S7, S9) — `FavoriteButton`/`FavoritesList` 모두 로그인 게이트(Task 4) 안쪽 `StationSearch` 트리에서만 렌더되는 구조로 자동 충족(`components/gas/station-list.test.tsx`의 INV-2 테스트로 하트 존재 확인)
 
 ## End-to-end 검증
 

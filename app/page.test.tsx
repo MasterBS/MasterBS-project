@@ -40,6 +40,11 @@ vi.mock("@/components/gas/map-view", () => ({
     />
   ),
 }));
+// FavoritesList 자체의 fetch/빈 상태 로직은 components/gas/favorites-list.test.tsx에서
+// 검증한다 - 여기서는 "검색 화면 <-> 즐겨찾기 화면 전환"만 확인한다.
+vi.mock("@/components/gas/favorites-list", () => ({
+  FavoritesList: () => <div data-testid="favorites-list-mock" />,
+}));
 
 const { default: Page } = await import("./page");
 
@@ -469,5 +474,62 @@ describe("Page map provider branching [sso-login S11][S11][sso-login S12-1][S12-
     expect(screen.queryByText("지도 provider를 선택하세요")).not.toBeInTheDocument();
     expect(screen.queryByText("내 주변 저가 주유소 TOP5")).not.toBeInTheDocument();
     expect(useGeolocationMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("Page favorites view [sso-login S9-1][S9-1]", () => {
+  beforeEach(() => {
+    useGeolocationMock.mockReset();
+    useStationsMock.mockReset();
+    useSessionMock.mockReset();
+    signInMock.mockReset();
+    useMapProviderMock.mockReset();
+    useAccountFiltersMock.mockReset();
+    useSessionMock.mockReturnValue({ status: "authenticated", data: { userKey: "kakao:1" } });
+    useMapProviderMock.mockReturnValue({ status: "loaded", provider: "naver", setProvider: vi.fn() });
+    useAccountFiltersMock.mockReturnValue({
+      status: "loaded",
+      fuel: "gasoline",
+      brands: ["SKE", "GSC", "HDO", "SOL", "ETC"],
+      setFuel: vi.fn(),
+      setBrands: vi.fn(),
+    });
+    useGeolocationMock.mockReturnValue({ status: "idle", coords: null, retry: vi.fn() });
+    useStationsMock.mockReturnValue({ status: "idle", stations: [], error: null });
+    window.localStorage.clear();
+  });
+
+  it("[sso-login S9-1][S9-1] clicking the header heart icon switches from the search screen to the favorites view", async () => {
+    const user = userEvent.setup();
+    render(<Page />);
+
+    expect(screen.queryByTestId("favorites-list-mock")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "즐겨찾기 목록" }));
+
+    expect(screen.getByTestId("favorites-list-mock")).toBeInTheDocument();
+    expect(screen.getByText("즐겨찾기 목록")).toBeInTheDocument();
+  });
+
+  it("[sso-login S9-1][S9-1] the profile menu also has a favorites entry point that switches views", async () => {
+    const user = userEvent.setup();
+    render(<Page />);
+
+    await user.click(screen.getByRole("button", { name: "프로필" }));
+    await user.click(await screen.findByText("즐겨찾기 목록"));
+
+    expect(screen.getByTestId("favorites-list-mock")).toBeInTheDocument();
+  });
+
+  it("returns to the search screen when 검색으로 돌아가기 is clicked", async () => {
+    const user = userEvent.setup();
+    render(<Page />);
+
+    await user.click(screen.getByRole("button", { name: "즐겨찾기 목록" }));
+    expect(screen.getByTestId("favorites-list-mock")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "검색으로 돌아가기" }));
+
+    expect(screen.queryByTestId("favorites-list-mock")).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 import type { BrowserContext, Page } from "@playwright/test";
 import { encode } from "next-auth/jwt";
-import type { MapProvider } from "../types/map-provider";
+import type { Favorite, FavoriteSnapshotInput } from "../types/favorite";
 import type { UserSettings } from "../types/user-settings";
 
 // next-auth의 JWT 세션 쿠키를 실제 OAuth 리다이렉트 없이 직접 주입한다.
@@ -58,5 +58,37 @@ export async function stubUserSettings(
       body = { ...body, ...patch, updatedAt: new Date().toISOString() };
     }
     await route.fulfill({ json: body });
+  });
+}
+
+// 마찬가지로 실 Supabase가 없어 /api/favorites도 스텁이 필요하다. GET(목록)/POST(토글)를
+// Map으로 상태 있게 다뤄, "즐겨찾기 후 로그아웃·재로그인해도 남아있다" 같은 흐름도 검증할 수 있다.
+export async function stubFavorites(page: Page): Promise<void> {
+  const favorites = new Map<string, Favorite>();
+
+  await page.route("**/api/favorites", async (route) => {
+    const request = route.request();
+    if (request.method() === "POST") {
+      const input = JSON.parse(request.postData() ?? "{}") as FavoriteSnapshotInput;
+      if (favorites.has(input.stationUniId)) {
+        favorites.delete(input.stationUniId);
+        await route.fulfill({ json: { favorited: false } });
+        return;
+      }
+      favorites.set(input.stationUniId, {
+        id: input.stationUniId,
+        userKey: "stub",
+        stationUniId: input.stationUniId,
+        name: input.name,
+        brandLabel: input.brandLabel,
+        lat: input.lat,
+        lng: input.lng,
+        price: input.price,
+        createdAt: new Date().toISOString(),
+      });
+      await route.fulfill({ json: { favorited: true } });
+      return;
+    }
+    await route.fulfill({ json: Array.from(favorites.values()) });
   });
 }

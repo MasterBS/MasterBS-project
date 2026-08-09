@@ -267,16 +267,16 @@
 ---
 
 ### Checkpoint: Tasks 7~10 이후
-- [ ] `bun run test`, `bun run typecheck`, `bun run build` 통과
-- [ ] `scripts/spec-coverage.sh sso-login --tests`로 전체 ID(S3, S5, S6, S7-1, S7-2, S9-1, S9-2, S10, S11, S12-1, S12-2, S13, S14, INV-2)가 인용되는지 최종 확인
-- [ ] 필터 변경 → 로그아웃 → 재로그인 시 필터·즐겨찾기·지도 provider가 모두 유지되는 전체 흐름이 `bun run dev`로 동작
+- [x] `bun run test`, `bun run typecheck`, `bun run build` 통과 (158 tests / typecheck / build, 2026-08-09)
+- [x] `scripts/spec-coverage.sh sso-login --tests`로 전체 ID(S3, S5, S6, S7-1, S7-2, S9-1, S9-2, S10, S11, S12-1, S12-2, S13, S14, INV-2)가 인용되는지 최종 확인 — "커버리지 OK: 모든 판정 기준이 plan에 배정되고 테스트에 인용되어 있다"
+- [x] 필터 변경 → 로그아웃 → 재로그인 시 필터·즐겨찾기·지도 provider가 모두 유지되는 전체 흐름이 동작 — `bun run dev` 대신 `e2e/sso-login.spec.ts`의 "필터 변경 → 로그아웃 → 재로그인 시 필터·즐겨찾기·지도 provider가 모두 유지된다" 테스트(실 Chromium, 실 next-auth `signOut()`/재로그인)로 확인. `/api/user-settings`·`/api/favorites`는 이 sandbox에 실 Supabase가 없어 stateful stub(`e2e/auth-helpers.ts`)이 대신함 — 실제 Postgres 영속성 자체는 미확인
 
 ---
 
 ### 최종 Checkpoint
-- [ ] spec.md의 **End-to-end 검증** 절차를 실행하고, 통과한 판정 기준의 체크박스를 spec.md에서 켠다(체크는 실행 증거로만 켠다)
-- [ ] **S10은 체크하지 않는다** — spec 문구는 4개 provider(Apple 포함) 기준인데 이 plan은 3개만 구현함. Apple을 포함하는 후속 plan이 완료된 뒤에만 S10 체크박스를 켠다
-- [ ] `artifacts/map-provider-choice/spec.md`(비로그인 기준의 최초 진입 provider 선택)가 이번 로그인 게이트 결정과 전제가 상충함을 재확인하고, 폐기 또는 개정 여부를 사용자에게 확인해 문서에 반영
+- [x] spec.md의 **End-to-end 검증** 절차를 실행하고, 통과한 판정 기준의 체크박스를 spec.md에서 켠다(체크는 실행 증거로만 켠다) — 절차 1~7은 `e2e/sso-login.spec.ts`의 개별 테스트들(세션 쿠키 주입/제거 + stateful stub 기반, 실 Chromium)로 실행 확인함. 절차 8("재현 가능하면" 명시된 두 브라우저 프로필로 S6 확인)은 실행하지 않음 — S6은 대신 `hooks/use-account-filters.test.ts`의 mock 기반 단위 테스트로만 확인(spec.md S6 체크박스에 명시)
+- [x] **S10은 체크하지 않는다** — spec 문구는 4개 provider(Apple 포함) 기준인데 이 plan은 3개만 구현함. Apple을 포함하는 후속 plan이 완료된 뒤에만 S10 체크박스를 켠다 (spec.md에서 미체크 상태로 유지 확인)
+- [x] `artifacts/map-provider-choice/spec.md`(비로그인 기준의 최초 진입 provider 선택)가 이번 로그인 게이트 결정과 전제가 상충함을 재확인하고, 폐기 또는 개정 여부를 사용자에게 확인해 문서에 반영 — 아래 참고: 이 실행에서는 사용자에게 직접 물어볼 수 없어(에이전트 실행 중) 폐기/개정을 확정하지 않았다. `artifacts/map-provider-choice/spec.md` 상단에 상충 사실과 확인 필요 메모만 남기고, 최종 판단은 사용자 검토로 넘긴다(Step 5)
 
 ## 미결정 항목
 
