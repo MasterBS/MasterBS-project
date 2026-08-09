@@ -18,6 +18,15 @@ vi.mock("next-auth/react", () => ({
 vi.mock("@/hooks/use-map-provider", () => ({
   useMapProvider: () => ({ status: "loaded", provider: "naver", setProvider: vi.fn() }),
 }));
+vi.mock("@/hooks/use-account-filters", () => ({
+  useAccountFilters: () => ({
+    status: "loaded",
+    fuel: "gasoline",
+    brands: ["SKE", "GSC", "HDO", "SOL", "ETC"],
+    setFuel: vi.fn(),
+    setBrands: vi.fn(),
+  }),
+}));
 
 function FailingKakaoMapView({ onError }: { onError?: () => void }) {
   useEffect(() => {

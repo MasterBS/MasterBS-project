@@ -4,10 +4,11 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Loader2Icon } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useAccountFilters } from "@/hooks/use-account-filters";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useMapProvider } from "@/hooks/use-map-provider";
 import { useStations } from "@/hooks/use-stations";
-import { BRAND_KEYS, MIN_RESULT_COUNT } from "@/config/opinet";
+import { MIN_RESULT_COUNT } from "@/config/opinet";
 import { FuelToggle } from "@/components/gas/fuel-toggle";
 import { Filters } from "@/components/gas/filters";
 import { SettingsSheet } from "@/components/gas/settings-sheet";
@@ -21,7 +22,6 @@ import {
   LocationDeniedMessage,
   PartialResultsBanner,
 } from "@/components/gas/status-message";
-import type { BrandKey, FuelType } from "@/types/station";
 import type { MapProvider } from "@/types/map-provider";
 
 const MapView = dynamic(() => import("@/components/gas/map-view").then((m) => m.MapView), {
@@ -50,8 +50,7 @@ function StationSearch({
   provider: MapProvider;
   setProvider: (provider: MapProvider) => void;
 }) {
-  const [fuel, setFuel] = useState<FuelType>("gasoline");
-  const [brands, setBrands] = useState<BrandKey[]>(BRAND_KEYS);
+  const { fuel, brands, setFuel, setBrands } = useAccountFilters();
   const [selfOnly, setSelfOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const geolocation = useGeolocation();

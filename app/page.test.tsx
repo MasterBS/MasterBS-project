@@ -3,12 +3,14 @@ import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { MapProvider } from "@/types/map-provider";
+import type { BrandKey, FuelType } from "@/types/station";
 
 const useGeolocationMock = vi.fn();
 const useStationsMock = vi.fn();
 const useSessionMock = vi.fn();
 const signInMock = vi.fn();
 const useMapProviderMock = vi.fn();
+const useAccountFiltersMock = vi.fn();
 
 vi.mock("@/hooks/use-geolocation", () => ({
   useGeolocation: () => useGeolocationMock(),
@@ -18,6 +20,12 @@ vi.mock("@/hooks/use-stations", () => ({
 }));
 vi.mock("@/hooks/use-map-provider", () => ({
   useMapProvider: () => useMapProviderMock(),
+}));
+// S5/S6(계정 동기화) 자체는 hooks/use-account-filters.test.ts에서 검증한다 - 여기서는
+// 실제 useState를 가진 것처럼 동작하는 기본 구현으로 대체해 기존 상호작용 테스트
+// (fuel/brand 토글 클릭 시 리렌더)가 그대로 성립하게 한다.
+vi.mock("@/hooks/use-account-filters", () => ({
+  useAccountFilters: () => useAccountFiltersMock(),
 }));
 vi.mock("next-auth/react", () => ({
   useSession: () => useSessionMock(),
@@ -42,11 +50,17 @@ describe("Page [S1-1][S2]", () => {
     useSessionMock.mockReset();
     signInMock.mockReset();
     useMapProviderMock.mockReset();
+    useAccountFiltersMock.mockReset();
     // 이 describe의 기존 테스트는 전부 "로그인 + 계정에 지도 provider가 이미 정해진 상태에서
     // 검색 화면이 보인다"는 전제라 기본값을 authenticated + naver로 둔다. 로그인/provider
     // 분기 자체는 아래 별도 describe에서 검증.
     useSessionMock.mockReturnValue({ status: "authenticated", data: { userKey: "kakao:1" } });
     useMapProviderMock.mockReturnValue({ status: "loaded", provider: "naver", setProvider: vi.fn() });
+    useAccountFiltersMock.mockImplementation(() => {
+      const [fuel, setFuel] = useState<FuelType>("gasoline");
+      const [brands, setBrands] = useState<BrandKey[]>(["SKE", "GSC", "HDO", "SOL", "ETC"]);
+      return { status: "loaded" as const, fuel, brands, setFuel, setBrands };
+    });
     window.localStorage.clear();
   });
 
@@ -331,6 +345,7 @@ describe("Page login gate [sso-login S10][S10][sso-login S3][S3]", () => {
     useSessionMock.mockReset();
     signInMock.mockReset();
     useMapProviderMock.mockReset();
+    useAccountFiltersMock.mockReset();
     window.localStorage.clear();
   });
 
@@ -382,9 +397,17 @@ describe("Page map provider branching [sso-login S11][S11][sso-login S12-1][S12-
     useSessionMock.mockReset();
     signInMock.mockReset();
     useMapProviderMock.mockReset();
+    useAccountFiltersMock.mockReset();
     useSessionMock.mockReturnValue({ status: "authenticated", data: { userKey: "kakao:1" } });
     useGeolocationMock.mockReturnValue({ status: "idle", coords: null, retry: vi.fn() });
     useStationsMock.mockReturnValue({ status: "idle", stations: [], error: null });
+    useAccountFiltersMock.mockReturnValue({
+      status: "loaded",
+      fuel: "gasoline",
+      brands: ["SKE", "GSC", "HDO", "SOL", "ETC"],
+      setFuel: vi.fn(),
+      setBrands: vi.fn(),
+    });
     window.localStorage.clear();
   });
 

@@ -58,3 +58,15 @@ date: 2026-08-09
 **지시문**: `hooks/use-map-provider.ts`가 마운트 시 `GET /api/user-settings`를 부르고, 이 sandbox에는 `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`가 없어 그 라우트가 항상 500(HTML 에러 페이지)을 반환한다. `res.json()`이 그 HTML을 파싱하려다 실패해 `useMapProvider`의 상태가 `"loading"`에서 영원히 못 벗어난다 - 로그인 이후 화면(검색 화면, provider 선택 화면, 이후 즐겨찾기 등)을 다루는 모든 e2e 테스트는 `loginAs()`와 함께 `stubUserSettings(page, { mapProvider })`도 반드시 호출해야 한다. `e2e/auth-helpers.ts`의 `stubUserSettings`는 GET/PUT을 상태 있게(stateful) 다뤄서, provider를 바꾸는 테스트가 새로고침 후에도 바뀐 값을 보게 해준다(map-provider-selection의 "새로고침해도 유지" 시나리오가 실제로 그렇다).
 **에피소드**: Task 5에서 `hooks/use-map-provider.ts`를 계정 fetch 기반으로 바꾼 뒤 `e2e/sso-login.spec.ts`의 S13 테스트("계정에 provider가 이미 있으면 곧장 검색 화면")를 `loginAs()`만 호출해 짰더니 검색 화면이 전혀 뜨지 않았다(spinner에 계속 머묾) - 브라우저 콘솔에는 `/api/user-settings` 500과 `res.json()`의 JSON 파싱 에러가 함께 찍혔다. Task 4에서 이미 "로그인 게이트가 기존 e2e를 깨뜨린다"는 교훈을 남겼는데, Task 5는 그 위에 한 겹 더(계정 설정 fetch) 깨뜨린 것 - 같은 종류의 함정이 계층마다 반복될 수 있다는 뜻으로 기록해둔다.
 **증거**: `e2e/auth-helpers.ts`의 `stubUserSettings()`, `e2e/cheap-gas-finder.spec.ts`/`e2e/map-provider-selection.spec.ts`/`e2e/sso-login.spec.ts` 전체에 배선, `bun run test:e2e -- sso-login`(6/6 통과), `bun run test:e2e -- map-provider-selection`(6/7, 1개는 위 egress 항목과 동일한 무관 실패).
+
+---
+triggers: [기존 유종·브랜드 필터 상태 관리 훅, use-account-filters, plan.md Modify 존재하지 않는 파일, page.tsx useState fuel brands]
+status: verified
+scope: this-repo (sso-login plan.md Task 7의 "영향 받는 파일" 표 부정확)
+date: 2026-08-09
+---
+## plan.md가 "기존 유종·브랜드 필터 상태 관리 훅(Modify)"이라 부른 파일은 실제로 존재하지 않았다 - 신규 훅으로 추출
+
+**지시문**: plan.md의 "영향 받는 파일" 표가 특정 파일을 "Modify"로 지정했는데 실제 코드베이스에 그런 파일이 없다면(이번 경우 fuel/brands는 `app/page.tsx` 안 `useState` 두 줄이 전부였고 별도 훅이 없었다), 억지로 기존 파일을 찾지 말고 plan의 의도(계정 동기화 책임을 캡슐화)에 맞는 신규 파일을 만들되 그 판단을 기록한다. `hooks/use-account-filters.ts`를 새로 만들어 `app/page.tsx`의 로컬 `useState<FuelType>`/`useState<BrandKey[]>`를 대체했다.
+**에피소드**: Task 5의 `hooks/use-map-provider.ts`와 거의 동일한 모양(마운트 시 GET, 로컬 낙관적 업데이트 + PUT)으로 설계했다 - 계정에 값이 없으면(S5) 기기 기본값을 유지하며 변경 시 PUT, 값이 있으면(S6) 그 값을 그대로 적용. 다만 `useMapProvider`와 `useAccountFilters`가 각각 독립적으로 `GET /api/user-settings`를 호출해 마운트 시 요청이 중복된다(기능적으로는 무해 - idempotent GET) - 나중에 두 훅을 하나의 `useAccountSettings()`로 합쳐 fetch를 공유할 여지가 있다. 이번 Task 범위에서는 plan의 파일 경계(Task 5=use-map-provider.ts, Task 7=필터 훅)를 그대로 지키기 위해 합치지 않았다.
+**증거**: `hooks/use-account-filters.ts`, `hooks/use-account-filters.test.ts`의 `[sso-login S5][S5]`/`[sso-login S6][S6]` 테스트, `app/page.tsx`의 `useAccountFilters()` 배선.
