@@ -143,9 +143,9 @@
 ---
 
 ### Checkpoint: Tasks 1~3 이후
-- [ ] `bun run test`, `bun run typecheck`, `bun run build` 통과
-- [ ] Supabase 테이블 생성 확인, next-auth가 로컬에서 최소 하나의 provider로 실제 로그인·콜백까지 도달함, `/api/user-settings`·`/api/favorites`가 세션 유무에 따라 401/정상 응답을 반환함(evidence 확인)
-- [ ] 아직 사용자 대면 UI는 없음 — 기반 인프라 전체(DB, 인증, API 경계)가 준비된 상태
+- [x] `bun run test`, `bun run typecheck`, `bun run build` 통과 (130 tests / typecheck / build 모두 성공, 2026-08-09)
+- [ ] Supabase 테이블 생성 확인, next-auth가 로컬에서 최소 하나의 provider로 실제 로그인·콜백까지 도달함, `/api/user-settings`·`/api/favorites`가 세션 유무에 따라 401/정상 응답을 반환함(evidence 확인) — **실 자격증명(Supabase 프로젝트, OAuth 앱) 없어 미확인.** mock 기반 단위 테스트로만 401/정상 분기를 확인함(`app/api/user-settings/route.test.ts`, `app/api/favorites/route.test.ts`)
+- [x] 아직 사용자 대면 UI는 없음 — 기반 인프라 전체(DB, 인증, API 경계)가 준비된 상태
 
 ---
 
