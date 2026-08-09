@@ -68,6 +68,8 @@ Claude Code hooks 기반 자동 품질 게이트 (`.claude/settings.json`)
 - `NEXT_PUBLIC_KAKAO_MAP_KEY=<your-kakao-map-key>`
 - `NEXT_PUBLIC_NAVER_MAP_CLIENT_ID=<your-ncp-client-id>` (NCP 콘솔 > AI·NAVER API > Maps > Web Dynamic Map 활성화 후 발급, 서비스 URL에 로컬/배포 도메인 등록 필요)
 - `NEXT_PUBLIC_TMAP_APP_KEY=<your-tmap-app-key>` (openapi.sk.com 콘솔에서 앱 생성 후 TMAP 상품 등록, appKey 발급)
+- `SUPABASE_URL=<your-supabase-project-url>` (Supabase 프로젝트 설정 > API에서 발급, 서버 전용)
+- `SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>` (Supabase 프로젝트 설정 > API에서 발급, 서버 전용 — 절대 클라이언트에 노출 금지. `supabase/migrations/`의 SQL을 Supabase SQL Editor에서 실행해 `user_settings`/`favorites` 테이블을 먼저 생성해야 함)
 
 로컬 개발 시에는 `.env.local` 파일을 생성하고 `.env.example`를 참조할 수 있습니다.
 ## Claude Code 워크플로우
