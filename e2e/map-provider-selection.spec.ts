@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loginAs } from "./auth-helpers";
+import { loginAs, stubUserSettings } from "./auth-helpers";
 
 const CURRENT_LOCATION = { latitude: 37.5587543, longitude: 127.0008881 };
 
@@ -62,6 +62,7 @@ async function stubMapSdks(page: Page) {
 
 test("[S6] 설정 진입점은 위치 권한이 거부된 상태에서도 항상 보인다", async ({ page, context }) => {
   await loginAs(context, "kakao:e2e-test");
+  await stubUserSettings(page);
   await page.goto("/");
 
   await expect(page.getByText("위치 권한이 필요해요")).toBeVisible();
@@ -79,6 +80,7 @@ test("[S1][S3] 기본값은 네이버지도이고, 설정에서 카카오맵으�
 
   const naverRequest = page.waitForRequest("**/oapi.map.naver.com/openapi/v3/maps.js**");
   await loginAs(context, "kakao:e2e-test");
+  await stubUserSettings(page);
   await page.goto("/");
   await expect(page.getByRole("listitem")).toHaveCount(1);
   await naverRequest;
@@ -97,6 +99,7 @@ test("[S4] 새로고침해도 선택한 provider가 유지된다", async ({ page
   await stubMapSdks(page);
 
   await loginAs(context, "kakao:e2e-test");
+  await stubUserSettings(page);
   await page.goto("/");
   await expect(page.getByRole("listitem")).toHaveCount(1);
 
@@ -118,6 +121,7 @@ test("[tmap-provider-integration S1-1] 설정에서 티맵을 선택하면 새�
   await stubMapSdks(page);
 
   await loginAs(context, "kakao:e2e-test");
+  await stubUserSettings(page);
   await page.goto("/");
   await expect(page.getByRole("listitem")).toHaveCount(1);
 
@@ -139,6 +143,7 @@ test("[tmap-provider-integration S3] 티맵으로 전환 후 새로고침해도 
   await stubMapSdks(page);
 
   await loginAs(context, "kakao:e2e-test");
+  await stubUserSettings(page);
   await page.goto("/");
   await expect(page.getByRole("listitem")).toHaveCount(1);
 
@@ -162,6 +167,7 @@ test("[tmap-provider-integration S4-1][tmap-provider-integration S4-2] 티맵 SD
   });
 
   await loginAs(context, "kakao:e2e-test");
+  await stubUserSettings(page);
   await page.goto("/");
   await expect(page.getByRole("listitem")).toHaveCount(1);
 
@@ -185,6 +191,7 @@ test("[네이버지도 길찾기 웹 폴백] 앱 딥링크가 반응 없으면 �
   await stubMapSdks(page);
 
   await loginAs(context, "kakao:e2e-test");
+  await stubUserSettings(page);
   await page.goto("/");
   await expect(page.getByRole("listitem")).toHaveCount(1);
 

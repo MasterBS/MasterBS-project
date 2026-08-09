@@ -1,17 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { MapProvider } from "@/types/map-provider";
 
 const useGeolocationMock = vi.fn();
 const useStationsMock = vi.fn();
 const useSessionMock = vi.fn();
 const signInMock = vi.fn();
+const useMapProviderMock = vi.fn();
 
 vi.mock("@/hooks/use-geolocation", () => ({
   useGeolocation: () => useGeolocationMock(),
 }));
 vi.mock("@/hooks/use-stations", () => ({
   useStations: (...args: unknown[]) => useStationsMock(...args),
+}));
+vi.mock("@/hooks/use-map-provider", () => ({
+  useMapProvider: () => useMapProviderMock(),
 }));
 vi.mock("next-auth/react", () => ({
   useSession: () => useSessionMock(),
@@ -35,9 +41,12 @@ describe("Page [S1-1][S2]", () => {
     useStationsMock.mockReset();
     useSessionMock.mockReset();
     signInMock.mockReset();
-    // 이 describe의 기존 테스트는 전부 "로그인된 상태에서 검색 화면이 보인다"는 전제라
-    // 기본값을 authenticated로 둔다. 로그인 게이트 자체의 분기는 아래 별도 describe에서 검증.
+    useMapProviderMock.mockReset();
+    // 이 describe의 기존 테스트는 전부 "로그인 + 계정에 지도 provider가 이미 정해진 상태에서
+    // 검색 화면이 보인다"는 전제라 기본값을 authenticated + naver로 둔다. 로그인/provider
+    // 분기 자체는 아래 별도 describe에서 검증.
     useSessionMock.mockReturnValue({ status: "authenticated", data: { userKey: "kakao:1" } });
+    useMapProviderMock.mockReturnValue({ status: "loaded", provider: "naver", setProvider: vi.fn() });
     window.localStorage.clear();
   });
 
@@ -263,6 +272,11 @@ describe("Page [S1-1][S2]", () => {
 
   it("[map-provider-selection S1-1] switching provider in settings replaces the map immediately, without refetching stations", async () => {
     const user = userEvent.setup();
+    // 이 테스트만 실제 상태를 갖는 훅처럼 동작해야 설정에서 고른 provider가 리렌더에 반영된다.
+    useMapProviderMock.mockImplementation(() => {
+      const [provider, setProvider] = useState<MapProvider>("naver");
+      return { status: "loaded" as const, provider, setProvider };
+    });
     useGeolocationMock.mockReturnValue({
       status: "success",
       coords: { lat: 37.56, lng: 127.0 },
@@ -306,6 +320,7 @@ describe("Page login gate [sso-login S10][S10][sso-login S3][S3]", () => {
     useStationsMock.mockReset();
     useSessionMock.mockReset();
     signInMock.mockReset();
+    useMapProviderMock.mockReset();
     window.localStorage.clear();
   });
 
@@ -347,5 +362,79 @@ describe("Page login gate [sso-login S10][S10][sso-login S3][S3]", () => {
     expect(screen.getByText("로그인해야 이용할 수 있어요")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "네이버로 로그인" }));
     expect(signInMock).toHaveBeenCalledWith("naver");
+  });
+});
+
+describe("Page map provider branching [sso-login S11][S11][sso-login S12-1][S12-1][sso-login S12-2][S12-2][sso-login S13][S13]", () => {
+  beforeEach(() => {
+    useGeolocationMock.mockReset();
+    useStationsMock.mockReset();
+    useSessionMock.mockReset();
+    signInMock.mockReset();
+    useMapProviderMock.mockReset();
+    useSessionMock.mockReturnValue({ status: "authenticated", data: { userKey: "kakao:1" } });
+    useGeolocationMock.mockReturnValue({ status: "idle", coords: null, retry: vi.fn() });
+    useStationsMock.mockReturnValue({ status: "idle", stations: [], error: null });
+    window.localStorage.clear();
+  });
+
+  it("[sso-login S11][S11] shows the map provider picker (not the search screen) when the account has no saved provider yet", () => {
+    useMapProviderMock.mockReturnValue({ status: "loaded", provider: null, setProvider: vi.fn() });
+
+    render(<Page />);
+
+    expect(screen.getByText("지도 provider를 선택하세요")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "카카오맵" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "네이버지도" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "티맵" })).toBeInTheDocument();
+    expect(useGeolocationMock).not.toHaveBeenCalled();
+  });
+
+  it("[sso-login S12-1][S12-1][sso-login S12-2][S12-2] picking a provider saves it and enters the search screen with that provider", async () => {
+    const user = userEvent.setup();
+    const setProviderSpy = vi.fn();
+    // 실제 상태를 갖는 훅처럼 동작해야 선택 직후 검색 화면으로의 전환(S12-2)을 관찰할 수 있다.
+    useMapProviderMock.mockImplementation(() => {
+      const [provider, setProvider] = useState<MapProvider | null>(null);
+      return {
+        status: "loaded" as const,
+        provider,
+        setProvider: (next: MapProvider) => {
+          setProviderSpy(next);
+          setProvider(next);
+        },
+      };
+    });
+
+    render(<Page />);
+    expect(screen.getByText("지도 provider를 선택하세요")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "네이버지도" }));
+
+    // S12-1: 계정에 저장(호출)됐다
+    expect(setProviderSpy).toHaveBeenCalledWith("naver");
+    // S12-2: 선택 화면 대신 검색 화면에 진입했다
+    expect(screen.queryByText("지도 provider를 선택하세요")).not.toBeInTheDocument();
+    expect(screen.getByText("내 주변 저가 주유소 TOP5")).toBeInTheDocument();
+  });
+
+  it("[sso-login S13][S13] skips the picker and goes straight to the search screen when the account already has a provider", () => {
+    useMapProviderMock.mockReturnValue({ status: "loaded", provider: "naver", setProvider: vi.fn() });
+
+    render(<Page />);
+
+    expect(screen.queryByText("지도 provider를 선택하세요")).not.toBeInTheDocument();
+    expect(screen.getByText("내 주변 저가 주유소 TOP5")).toBeInTheDocument();
+    expect(useGeolocationMock).toHaveBeenCalled();
+  });
+
+  it("shows a full-page spinner while the account's map provider is still loading", () => {
+    useMapProviderMock.mockReturnValue({ status: "loading", provider: null, setProvider: vi.fn() });
+
+    render(<Page />);
+
+    expect(screen.queryByText("지도 provider를 선택하세요")).not.toBeInTheDocument();
+    expect(screen.queryByText("내 주변 저가 주유소 TOP5")).not.toBeInTheDocument();
+    expect(useGeolocationMock).not.toHaveBeenCalled();
   });
 });

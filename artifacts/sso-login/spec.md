@@ -73,20 +73,20 @@
 - **Given**: 이 계정으로 지도 provider를 한 번도 정한 적 없음
 - **When**: provider 인증을 완료해 로그인에 성공한다
 - **Then**
-  - [ ] S11 주유소 검색 화면 대신, 카카오맵·네이버지도·티맵 중 하나를 고르는 지도 provider 선택 화면이 뜬다
+  - [x] S11 주유소 검색 화면 대신, 카카오맵·네이버지도·티맵 중 하나를 고르는 지도 provider 선택 화면이 뜬다 — `hooks/use-map-provider.test.ts`, `components/auth/map-provider-picker.test.tsx`, `app/page.test.tsx`, `e2e/sso-login.spec.ts`(실 Chromium)
 
 ### S12. 지도 provider를 고르면 그 provider로 검색 화면에 들어간다
 - **Given**: S11의 지도 provider 선택 화면이 보이는 상태
 - **When**: 하나를 선택한다
 - **Then**
-  - [ ] S12-1 선택한 provider가 계정에 저장된다
-  - [ ] S12-2 주유소 검색 화면에 진입하고, 지도가 선택한 provider로 그려진다
+  - [x] S12-1 선택한 provider가 계정에 저장된다 — `hooks/use-map-provider.test.ts`(PUT 호출), `e2e/sso-login.spec.ts`(실 PUT 요청 바디 확인)
+  - [x] S12-2 주유소 검색 화면에 진입하고, 지도가 선택한 provider로 그려진다 — `app/page.test.tsx`, `e2e/sso-login.spec.ts`(실 Chromium)
 
 ### S13. 지도 provider가 이미 정해진 계정은 선택 화면 없이 곧장 들어간다
 - **Given**: 이 계정에 지도 provider가 이미 저장되어 있음(예: 이전에 "네이버지도"로 정함)
 - **When**: 로그인에 성공한다
 - **Then**
-  - [ ] S13 지도 provider 선택 화면 없이 곧장 주유소 검색 화면에 진입하고, 지도는 계정에 저장된 provider(예: 네이버지도)로 그려진다
+  - [x] S13 지도 provider 선택 화면 없이 곧장 주유소 검색 화면에 진입하고, 지도는 계정에 저장된 provider(예: 네이버지도)로 그려진다 — `app/page.test.tsx`, `e2e/sso-login.spec.ts`(실 Chromium)
 
 ### S14. 로그아웃
 - **Given**: 로그인된 상태로 주유소 검색 화면을 보고 있음

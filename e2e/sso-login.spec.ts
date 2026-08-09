@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loginAs } from "./auth-helpers";
+import { loginAs, stubUserSettings } from "./auth-helpers";
 
 // 실 카카오/네이버/구글 리다이렉트 없이, next-auth 세션 쿠키를 직접 주입/제거해
 // 로그인 게이트 분기를 증명한다 (artifacts/map-provider-selection/learnings.md의
@@ -37,8 +37,73 @@ test("[sso-login S3][S3] 로그인 화면에 남아 다른 provider 버튼을 �
 
 test("[sso-login S10][S10] 세션이 있으면 로그인 화면 없이 검색 화면으로 들어간다", async ({ page, context }) => {
   await loginAs(context, "kakao:e2e-sso-test");
+  await stubUserSettings(page, { mapProvider: "naver" });
 
   await page.goto("/");
 
   await expect(page.getByText("로그인해야 이용할 수 있어요")).not.toBeVisible();
+});
+
+test("[sso-login S11][S11] 계정에 지도 provider가 없으면(최초 로그인) 검색 화면 대신 선택 화면이 뜬다", async ({
+  page,
+  context,
+}) => {
+  await loginAs(context, "kakao:e2e-sso-test");
+  await stubUserSettings(page, { mapProvider: null });
+
+  await page.goto("/");
+
+  await expect(page.getByText("지도 provider를 선택하세요")).toBeVisible();
+  await expect(page.getByRole("button", { name: "카카오맵" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "네이버지도" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "티맵" })).toBeVisible();
+});
+
+test("[sso-login S12-1][S12-1][sso-login S12-2][S12-2] provider를 고르면 계정에 저장되고 그 provider로 검색 화면에 들어간다", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 37.5587543, longitude: 127.0008881 });
+  await loginAs(context, "kakao:e2e-sso-test");
+  await stubUserSettings(page, { mapProvider: null });
+  await page.route("**/api/stations*", async (route) => {
+    await route.fulfill({ json: [] });
+  });
+
+  let putBody: unknown = null;
+  page.on("request", (request) => {
+    if (request.url().includes("/api/user-settings") && request.method() === "PUT") {
+      putBody = request.postDataJSON();
+    }
+  });
+
+  await page.goto("/");
+  await expect(page.getByText("지도 provider를 선택하세요")).toBeVisible();
+
+  await page.getByRole("button", { name: "네이버지도" }).click();
+
+  // S12-2: 선택 화면이 사라지고 검색 화면으로 들어간다
+  await expect(page.getByText("지도 provider를 선택하세요")).not.toBeVisible();
+  await expect(page.getByText("내 주변 저가 주유소 TOP5")).toBeVisible();
+  // S12-1: 계정에 저장(PUT) 요청이 실제로 나갔다
+  await expect.poll(() => putBody).toEqual({ mapProvider: "naver" });
+});
+
+test("[sso-login S13][S13] 계정에 지도 provider가 이미 있으면 선택 화면 없이 곧장 검색 화면으로 들어간다", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 37.5587543, longitude: 127.0008881 });
+  await loginAs(context, "kakao:e2e-sso-test");
+  await stubUserSettings(page, { mapProvider: "naver" });
+  await page.route("**/api/stations*", async (route) => {
+    await route.fulfill({ json: [] });
+  });
+
+  await page.goto("/");
+
+  await expect(page.getByText("지도 provider를 선택하세요")).not.toBeVisible();
+  await expect(page.getByText("내 주변 저가 주유소 TOP5")).toBeVisible();
 });

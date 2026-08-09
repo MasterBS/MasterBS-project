@@ -13,6 +13,7 @@ import { Filters } from "@/components/gas/filters";
 import { SettingsSheet } from "@/components/gas/settings-sheet";
 import { StationList } from "@/components/gas/station-list";
 import { LoginGate } from "@/components/auth/login-gate";
+import { MapProviderPicker } from "@/components/auth/map-provider-picker";
 import {
   ApiErrorMessage,
   EmptyResultsMessage,
@@ -20,6 +21,7 @@ import {
   PartialResultsBanner,
 } from "@/components/gas/status-message";
 import type { BrandKey, FuelType } from "@/types/station";
+import type { MapProvider } from "@/types/map-provider";
 
 const MapView = dynamic(() => import("@/components/gas/map-view").then((m) => m.MapView), {
   ssr: false,
@@ -37,14 +39,20 @@ function FullPageSpinner() {
   );
 }
 
-// 로그인 상태에서만 렌더된다 - 위치 권한 요청(useGeolocation)이 이 컴포넌트 마운트
-// 전까지는 절대 일어나지 않도록, 세션 분기(Page)와 검색 화면 로직을 분리한다(S10).
-function StationSearch() {
+// 로그인 상태 + 계정에 지도 provider가 이미 정해진 상태에서만 렌더된다 - 위치 권한
+// 요청(useGeolocation)이 이 컴포넌트 마운트 전까지는 절대 일어나지 않도록, 세션/계정
+// provider 분기(Page)와 검색 화면 로직을 분리한다(S10, S11, S13).
+function StationSearch({
+  provider,
+  setProvider,
+}: {
+  provider: MapProvider;
+  setProvider: (provider: MapProvider) => void;
+}) {
   const [fuel, setFuel] = useState<FuelType>("gasoline");
   const [brands, setBrands] = useState<BrandKey[]>(BRAND_KEYS);
   const [selfOnly, setSelfOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { provider, setProvider } = useMapProvider();
   const geolocation = useGeolocation();
   const stations = useStations({
     lat: geolocation.coords?.lat ?? null,
@@ -134,11 +142,22 @@ function StationSearch() {
   );
 }
 
+function AuthenticatedApp() {
+  const mapProviderState = useMapProvider();
+
+  if (mapProviderState.status === "loading") return <FullPageSpinner />;
+  if (mapProviderState.provider === null) {
+    return <MapProviderPicker onSelect={mapProviderState.setProvider} />;
+  }
+
+  return <StationSearch provider={mapProviderState.provider} setProvider={mapProviderState.setProvider} />;
+}
+
 export default function Page() {
   const { status } = useSession();
 
   if (status === "loading") return <FullPageSpinner />;
   if (status === "unauthenticated") return <LoginGate />;
 
-  return <StationSearch />;
+  return <AuthenticatedApp />;
 }

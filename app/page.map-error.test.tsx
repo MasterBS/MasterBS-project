@@ -15,6 +15,9 @@ vi.mock("next-auth/react", () => ({
   useSession: () => ({ status: "authenticated", data: { userKey: "kakao:1" } }),
   signIn: vi.fn(),
 }));
+vi.mock("@/hooks/use-map-provider", () => ({
+  useMapProvider: () => ({ status: "loaded", provider: "naver", setProvider: vi.fn() }),
+}));
 
 function FailingKakaoMapView({ onError }: { onError?: () => void }) {
   useEffect(() => {

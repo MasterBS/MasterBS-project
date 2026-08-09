@@ -46,3 +46,15 @@ date: 2026-08-09
 **지시문**: `e2e/map-provider-selection.spec.ts`의 "[네이버지도 길찾기 웹 폴백]"이나 `e2e/cheap-gas-finder.spec.ts`의 "[S6] 길찾기 버튼을 클릭하면 새 탭에 카카오맵 길찾기가 열린다"가 실패하면(`chrome-error://chromewebdata` 또는 waitForURL 타임아웃), sso-login 변경을 의심하기 전에 `$HTTPS_PROXY/__agentproxy/status`의 `recentRelayFailures`와 `curl -sS -o /dev/null -w "%{http_code}" https://map.kakao.com`/`https://map.naver.com/...`을 먼저 확인한다. 이 두 도메인 모두 CONNECT 403이면 세션 egress 정책 문제이지 코드 회귀가 아니다.
 **에피소드**: `tmap-provider-integration/learnings.md`(2026-08-06)는 `map.naver.com`만 403이었다고 기록했는데, 이번 세션(2026-08-09)은 `map.kakao.com`도 403이었다 - egress 정책이 세션마다(또는 날짜마다) 달라질 수 있다는 기존 hypothesis가 다시 확인됐다. sso-login의 diff는 두 파일 모두 `loginAs()` 호출 추가뿐이고 `lib/directions.ts`는 건드리지 않았으므로 회귀가 아니라고 판단했다.
 **증거**: `curl -sS -o /dev/null -w "HTTP %{http_code}" https://map.kakao.com` → tunnel 403, 같은 명령의 `https://map.naver.com/...` → tunnel 403, `bun run test:e2e -- cheap-gas-finder`(7 passed, 1 skipped, 1 failed - kakao.com), `bun run test:e2e -- map-provider-selection`(6 passed, 1 failed - naver.com).
+
+---
+triggers: [SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다, /api/user-settings 500, use-map-provider stuck loading, e2e 검색 화면 안 뜸, page.route api/user-settings]
+status: verified
+scope: this-repo (실 Supabase 프로젝트 없는 sandbox 전용 - 실 배포에서는 무관)
+date: 2026-08-09
+---
+## 로그인 이후 화면을 다루는 e2e는 /api/user-settings도 스텁해야 한다 - 실 Supabase가 없으면 500이 나서 useMapProvider가 영원히 loading에 머문다
+
+**지시문**: `hooks/use-map-provider.ts`가 마운트 시 `GET /api/user-settings`를 부르고, 이 sandbox에는 `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`가 없어 그 라우트가 항상 500(HTML 에러 페이지)을 반환한다. `res.json()`이 그 HTML을 파싱하려다 실패해 `useMapProvider`의 상태가 `"loading"`에서 영원히 못 벗어난다 - 로그인 이후 화면(검색 화면, provider 선택 화면, 이후 즐겨찾기 등)을 다루는 모든 e2e 테스트는 `loginAs()`와 함께 `stubUserSettings(page, { mapProvider })`도 반드시 호출해야 한다. `e2e/auth-helpers.ts`의 `stubUserSettings`는 GET/PUT을 상태 있게(stateful) 다뤄서, provider를 바꾸는 테스트가 새로고침 후에도 바뀐 값을 보게 해준다(map-provider-selection의 "새로고침해도 유지" 시나리오가 실제로 그렇다).
+**에피소드**: Task 5에서 `hooks/use-map-provider.ts`를 계정 fetch 기반으로 바꾼 뒤 `e2e/sso-login.spec.ts`의 S13 테스트("계정에 provider가 이미 있으면 곧장 검색 화면")를 `loginAs()`만 호출해 짰더니 검색 화면이 전혀 뜨지 않았다(spinner에 계속 머묾) - 브라우저 콘솔에는 `/api/user-settings` 500과 `res.json()`의 JSON 파싱 에러가 함께 찍혔다. Task 4에서 이미 "로그인 게이트가 기존 e2e를 깨뜨린다"는 교훈을 남겼는데, Task 5는 그 위에 한 겹 더(계정 설정 fetch) 깨뜨린 것 - 같은 종류의 함정이 계층마다 반복될 수 있다는 뜻으로 기록해둔다.
+**증거**: `e2e/auth-helpers.ts`의 `stubUserSettings()`, `e2e/cheap-gas-finder.spec.ts`/`e2e/map-provider-selection.spec.ts`/`e2e/sso-login.spec.ts` 전체에 배선, `bun run test:e2e -- sso-login`(6/6 통과), `bun run test:e2e -- map-provider-selection`(6/7, 1개는 위 egress 항목과 동일한 무관 실패).
