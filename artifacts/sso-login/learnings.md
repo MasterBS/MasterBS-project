@@ -70,3 +70,15 @@ date: 2026-08-09
 **지시문**: plan.md의 "영향 받는 파일" 표가 특정 파일을 "Modify"로 지정했는데 실제 코드베이스에 그런 파일이 없다면(이번 경우 fuel/brands는 `app/page.tsx` 안 `useState` 두 줄이 전부였고 별도 훅이 없었다), 억지로 기존 파일을 찾지 말고 plan의 의도(계정 동기화 책임을 캡슐화)에 맞는 신규 파일을 만들되 그 판단을 기록한다. `hooks/use-account-filters.ts`를 새로 만들어 `app/page.tsx`의 로컬 `useState<FuelType>`/`useState<BrandKey[]>`를 대체했다.
 **에피소드**: Task 5의 `hooks/use-map-provider.ts`와 거의 동일한 모양(마운트 시 GET, 로컬 낙관적 업데이트 + PUT)으로 설계했다 - 계정에 값이 없으면(S5) 기기 기본값을 유지하며 변경 시 PUT, 값이 있으면(S6) 그 값을 그대로 적용. 다만 `useMapProvider`와 `useAccountFilters`가 각각 독립적으로 `GET /api/user-settings`를 호출해 마운트 시 요청이 중복된다(기능적으로는 무해 - idempotent GET) - 나중에 두 훅을 하나의 `useAccountSettings()`로 합쳐 fetch를 공유할 여지가 있다. 이번 Task 범위에서는 plan의 파일 경계(Task 5=use-map-provider.ts, Task 7=필터 훅)를 그대로 지키기 위해 합치지 않았다.
 **증거**: `hooks/use-account-filters.ts`, `hooks/use-account-filters.test.ts`의 `[sso-login S5][S5]`/`[sso-login S6][S6]` 테스트, `app/page.tsx`의 `useAccountFilters()` 배선.
+
+---
+triggers: [Task 8, settings-sheet 계정 저장, 이미 구현됨, 프로덕션 코드 변경 없음]
+status: verified
+scope: this-repo (sso-login Task 5의 설계가 Task 8 요구사항을 미리 충족한 경우)
+date: 2026-08-09
+---
+## Task 8("설정에서 provider 재선택 시 계정 저장")은 Task 5의 설계 때문에 이미 완료돼 있었다 - 코드 변경 없이 e2e로 증명만 추가
+
+**지시문**: 어떤 Task가 이전 Task의 설계(여기서는 `hooks/use-map-provider.ts`의 `setProvider`가 낙관적 업데이트 + PUT을 항상 함께 수행)로 인해 이미 저절로 충족돼 있다면, 억지로 코드를 다시 건드리지 않는다. 대신 그 사실을 실행 증거(테스트)로 명시적으로 증명하는 새 테스트를 추가해 "우연이 아니라 의도된 재사용"임을 남긴다.
+**에피소드**: `components/gas/settings-sheet.tsx`는 `onProviderChange` prop만 호출하는 순수 프레젠테이션 컴포넌트이고, `app/page.tsx`가 여기에 넘기는 함수는 Task 5에서 만든 `useMapProvider()`의 `setProvider`(계정 PUT 포함) 그 자체다 - `MapProviderPicker`(최초 선택)와 `SettingsSheet`(재선택)가 정확히 같은 함수를 공유한다. 그래서 Task 8은 프로덕션 코드를 전혀 바꾸지 않고, `e2e/sso-login.spec.ts`에 "설정 화면에서 지도 provider를 다시 고르면 그 변경도 계정에 저장된다" 테스트 하나만 추가해 실 브라우저에서 PUT 요청 바디를 직접 확인했다.
+**증거**: `e2e/sso-login.spec.ts`의 해당 테스트(PUT 바디가 `{ mapProvider: "kakao" }`인지 `expect.poll`로 확인), `bun run test:e2e -- sso-login`(8/8 통과).

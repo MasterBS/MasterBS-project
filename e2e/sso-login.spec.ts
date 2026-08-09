@@ -108,6 +108,36 @@ test("[sso-login S13][S13] 계정에 지도 provider가 이미 있으면 선택 
   await expect(page.getByText("내 주변 저가 주유소 TOP5")).toBeVisible();
 });
 
+// 담당 판정 기준 없음(plan.md Task 8) - "로그인 후 언제든 설정 화면에서 지도 provider를
+// 다시 바꿀 수 있고, 이 변경도 계정에 저장된다"는 spec 범위/포함의 기존 기능 유지 조항.
+test("설정 화면에서 지도 provider를 다시 고르면 그 변경도 계정(PUT /api/user-settings)에 저장된다", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 37.5587543, longitude: 127.0008881 });
+  await loginAs(context, "kakao:e2e-sso-test");
+  await stubUserSettings(page, { mapProvider: "naver" });
+  await page.route("**/api/stations*", async (route) => {
+    await route.fulfill({ json: [] });
+  });
+
+  let putBody: unknown = null;
+  page.on("request", (request) => {
+    if (request.url().includes("/api/user-settings") && request.method() === "PUT") {
+      putBody = request.postDataJSON();
+    }
+  });
+
+  await page.goto("/");
+  await expect(page.getByText("내 주변 저가 주유소 TOP5")).toBeVisible();
+
+  await page.getByRole("button", { name: "설정" }).click();
+  await page.getByRole("radio", { name: "카카오맵" }).click();
+
+  await expect.poll(() => putBody).toEqual({ mapProvider: "kakao" });
+});
+
 test("[sso-login S14][S14] 로그아웃하면 로그인 화면으로 돌아가고 검색 화면에 다시 접근할 수 없다", async ({
   page,
   context,
