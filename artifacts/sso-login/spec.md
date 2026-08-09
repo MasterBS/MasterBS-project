@@ -51,8 +51,8 @@
 - **Given**: 로그인된 상태, 결과 리스트에 주유소 항목이 보임
 - **When**: 항목의 하트 아이콘을 누른다
 - **Then**
-  - [ ] S7-1 하트 아이콘이 즐겨찾기 상태(채워짐)로 바뀐다
-  - [ ] S7-2 다시 누르면 즐겨찾기가 해제되고 하트 아이콘이 원래 상태로 돌아온다
+  - [x] S7-1 하트 아이콘이 즐겨찾기 상태(채워짐)로 바뀐다 — `components/gas/favorite-button.test.tsx`, `e2e/sso-login.spec.ts`(실 Chromium)
+  - [x] S7-2 다시 누르면 즐겨찾기가 해제되고 하트 아이콘이 원래 상태로 돌아온다 — `components/gas/favorite-button.test.tsx`, `e2e/sso-login.spec.ts`(실 Chromium)
 
 ### ~~S8~~ (삭제: 로그인이 게이트가 되면서 "비로그인 상태에서 리스트를 보는" 상황 자체가 없어짐)
 

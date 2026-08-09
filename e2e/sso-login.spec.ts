@@ -138,6 +138,48 @@ test("설정 화면에서 지도 provider를 다시 고르면 그 변경도 계�
   await expect.poll(() => putBody).toEqual({ mapProvider: "kakao" });
 });
 
+test("[sso-login S7-1][S7-1][sso-login S7-2][S7-2] 하트를 누르면 즐겨찾기로 채워지고, 다시 누르면 해제된다", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 37.5587543, longitude: 127.0008881 });
+  await loginAs(context, "kakao:e2e-sso-test");
+  await stubUserSettings(page, { mapProvider: "naver" });
+  await page.route("**/api/stations*", async (route) => {
+    await route.fulfill({
+      json: [
+        {
+          id: "A0001234",
+          name: "구인주유소",
+          brandCode: "SKE",
+          brandLabel: "SK에너지",
+          price: 1834,
+          distance: 2600,
+          lat: 37.5587543,
+          lng: 127.0008881,
+          isSelfEstimated: false,
+        },
+      ],
+    });
+  });
+  let favorited = false;
+  await page.route("**/api/favorites", async (route) => {
+    favorited = !favorited;
+    await route.fulfill({ json: { favorited } });
+  });
+
+  await page.goto("/");
+  const heart = page.getByRole("button", { name: "즐겨찾기" });
+  await expect(heart).toHaveAttribute("aria-pressed", "false");
+
+  await heart.click();
+  await expect(heart).toHaveAttribute("aria-pressed", "true");
+
+  await heart.click();
+  await expect(heart).toHaveAttribute("aria-pressed", "false");
+});
+
 test("[sso-login S14][S14] 로그아웃하면 로그인 화면으로 돌아가고 검색 화면에 다시 접근할 수 없다", async ({
   page,
   context,

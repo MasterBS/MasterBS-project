@@ -1,6 +1,7 @@
 import { NavigationIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { FavoriteButton } from "@/components/gas/favorite-button";
 import { openRoute, type LatLng } from "@/lib/directions";
 import { cn } from "@/lib/utils";
 import type { MapProvider } from "@/types/map-provider";
@@ -57,6 +58,7 @@ export function StationList({
                     </p>
                   </div>
                 </button>
+                <FavoriteButton station={station} />
                 <div className="shrink-0 text-right">
                   <div className="text-sm font-bold">{formatPrice(station.price)}</div>
                   <Button
