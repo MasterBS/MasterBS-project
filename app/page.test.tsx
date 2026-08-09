@@ -261,6 +261,16 @@ describe("Page [S1-1][S2]", () => {
     expect(screen.getByText("1위주유소")).toBeInTheDocument();
   });
 
+  it("[sso-login S14][S14] shows the profile menu entry point alongside settings", () => {
+    useGeolocationMock.mockReturnValue({ status: "denied", coords: null, retry: vi.fn() });
+    useStationsMock.mockReturnValue({ status: "idle", stations: [], error: null });
+
+    render(<Page />);
+
+    expect(screen.getByRole("button", { name: "설정" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "프로필" })).toBeInTheDocument();
+  });
+
   it("[map-provider-selection S6] always shows the settings entry point, even when location is denied", () => {
     useGeolocationMock.mockReturnValue({ status: "denied", coords: null, retry: vi.fn() });
     useStationsMock.mockReturnValue({ status: "idle", stations: [], error: null });

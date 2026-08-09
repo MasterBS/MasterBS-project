@@ -14,6 +14,7 @@ import { SettingsSheet } from "@/components/gas/settings-sheet";
 import { StationList } from "@/components/gas/station-list";
 import { LoginGate } from "@/components/auth/login-gate";
 import { MapProviderPicker } from "@/components/auth/map-provider-picker";
+import { ProfileMenu } from "@/components/auth/profile-menu";
 import {
   ApiErrorMessage,
   EmptyResultsMessage,
@@ -71,7 +72,10 @@ function StationSearch({
     <main className="mx-auto max-w-6xl p-4">
       <div className="mb-4 flex items-center justify-between gap-2">
         <h1 className="text-lg font-bold">내 주변 저가 주유소 TOP5</h1>
-        <SettingsSheet provider={provider} onProviderChange={setProvider} />
+        <div className="flex items-center gap-2">
+          <SettingsSheet provider={provider} onProviderChange={setProvider} />
+          <ProfileMenu />
+        </div>
       </div>
       {geolocation.status === "success" && (
         <>

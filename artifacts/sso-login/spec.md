@@ -92,7 +92,7 @@
 - **Given**: 로그인된 상태로 주유소 검색 화면을 보고 있음
 - **When**: 로그아웃을 실행한다
 - **Then**
-  - [ ] S14 로그인 화면으로 돌아가고, 주유소 검색 화면에는 다시 접근할 수 없다(로그인해야 다시 들어갈 수 있다)
+  - [x] S14 로그인 화면으로 돌아가고, 주유소 검색 화면에는 다시 접근할 수 없다(로그인해야 다시 들어갈 수 있다) — `components/auth/profile-menu.test.tsx`, `e2e/sso-login.spec.ts`(실 next-auth `signOut()` 흐름을 mock 없이 그대로 태움 - Supabase를 건드리지 않는 순수 세션 무효화라 이 sandbox에서도 end-to-end로 검증 가능, 새로고침 후에도 재접근 불가 확인)
 
 ## 불변 규칙
 

@@ -107,3 +107,35 @@ test("[sso-login S13][S13] 계정에 지도 provider가 이미 있으면 선택 
   await expect(page.getByText("지도 provider를 선택하세요")).not.toBeVisible();
   await expect(page.getByText("내 주변 저가 주유소 TOP5")).toBeVisible();
 });
+
+test("[sso-login S14][S14] 로그아웃하면 로그인 화면으로 돌아가고 검색 화면에 다시 접근할 수 없다", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 37.5587543, longitude: 127.0008881 });
+  await loginAs(context, "kakao:e2e-sso-test");
+  await stubUserSettings(page, { mapProvider: "naver" });
+  await page.route("**/api/stations*", async (route) => {
+    await route.fulfill({ json: [] });
+  });
+
+  await page.goto("/");
+  await expect(page.getByText("내 주변 저가 주유소 TOP5")).toBeVisible();
+
+  // 실 next-auth signOut() 흐름을 그대로 태운다(mock 없음) - Supabase를 건드리지 않는
+  // 순수 세션 무효화이므로 이 sandbox에서도 end-to-end로 검증 가능하다.
+  await page.getByRole("button", { name: "프로필" }).click();
+  await page.getByText("로그아웃").click();
+
+  await expect(page.getByText("로그인해야 이용할 수 있어요")).toBeVisible();
+  // "내 주변 저가 주유소 TOP5" 문구 자체는 LoginGate에도 동일하게 쓰여서(wireframe 참고)
+  // 텍스트로는 화면을 구분할 수 없다 - 검색 화면에만 있는 요소(설정/프로필 아이콘)로 확인한다.
+  await expect(page.getByRole("button", { name: "설정" })).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "프로필" })).not.toBeVisible();
+
+  // 새로고침해도 검색 화면에 다시 접근할 수 없다(세션이 실제로 지워졌는지 확인)
+  await page.reload();
+  await expect(page.getByText("로그인해야 이용할 수 있어요")).toBeVisible();
+  await expect(page.getByRole("button", { name: "설정" })).not.toBeVisible();
+});

@@ -199,9 +199,9 @@
 ---
 
 ### Checkpoint: Tasks 4~6 이후
-- [ ] `bun run test`, `bun run typecheck`, `bun run build` 통과
-- [ ] `scripts/spec-coverage.sh sso-login --tests`로 S3·S10·S11·S12-1·S12-2·S13·S14가 이 feature 소속 테스트에서 실제로 인용되는지 확인(feature-prefix + bare 이중 태그 여부를 직접 열어 확인, 다른 feature와의 우연한 매치 배제)
-- [ ] 로그인 → (최초) provider 선택 → 검색 화면 → 로그아웃 → 재로그인 → provider 선택 스킵까지 전체 로그인 흐름이 `bun run dev`로 동작
+- [x] `bun run test`, `bun run typecheck`, `bun run build` 통과 (142 tests / typecheck / build, 2026-08-09)
+- [x] `scripts/spec-coverage.sh sso-login --tests`로 S3·S10·S11·S12-1·S12-2·S13·S14가 이 feature 소속 테스트에서 실제로 인용되는지 확인(feature-prefix + bare 이중 태그 여부를 직접 열어 확인, 다른 feature와의 우연한 매치 배제) — 7개 ID 전부 `app/page.test.tsx` 등 sso-login 소속 파일에서 매치 확인(S9-1/S9-2는 Task 10 대상이라 아직 미인용, 예상된 상태)
+- [x] 로그인 → (최초) provider 선택 → 검색 화면 → 로그아웃 → 재로그인 → provider 선택 스킵까지 전체 로그인 흐름이 `bun run dev`로 동작 — `e2e/sso-login.spec.ts`(세션 쿠키 주입/제거 기반, 실 Chromium) 7개 테스트로 확인. 카카오/네이버/구글의 실 리다이렉트 자체는 OAuth 앱이 없어 미확인
 
 ---
 
