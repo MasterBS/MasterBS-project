@@ -3,6 +3,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Loader2Icon } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useMapProvider } from "@/hooks/use-map-provider";
 import { useStations } from "@/hooks/use-stations";
@@ -11,6 +12,7 @@ import { FuelToggle } from "@/components/gas/fuel-toggle";
 import { Filters } from "@/components/gas/filters";
 import { SettingsSheet } from "@/components/gas/settings-sheet";
 import { StationList } from "@/components/gas/station-list";
+import { LoginGate } from "@/components/auth/login-gate";
 import {
   ApiErrorMessage,
   EmptyResultsMessage,
@@ -27,7 +29,17 @@ const KAKAO_MAP_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY ?? "";
 const NAVER_MAP_CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ?? "";
 const TMAP_APP_KEY = process.env.NEXT_PUBLIC_TMAP_APP_KEY ?? "";
 
-export default function Page() {
+function FullPageSpinner() {
+  return (
+    <main className="flex min-h-[70vh] flex-col items-center justify-center gap-3 p-4">
+      <Loader2Icon className="size-8 animate-spin" aria-hidden="true" />
+    </main>
+  );
+}
+
+// 로그인 상태에서만 렌더된다 - 위치 권한 요청(useGeolocation)이 이 컴포넌트 마운트
+// 전까지는 절대 일어나지 않도록, 세션 분기(Page)와 검색 화면 로직을 분리한다(S10).
+function StationSearch() {
   const [fuel, setFuel] = useState<FuelType>("gasoline");
   const [brands, setBrands] = useState<BrandKey[]>(BRAND_KEYS);
   const [selfOnly, setSelfOnly] = useState(false);
@@ -120,4 +132,13 @@ export default function Page() {
       </div>
     </main>
   );
+}
+
+export default function Page() {
+  const { status } = useSession();
+
+  if (status === "loading") return <FullPageSpinner />;
+  if (status === "unauthenticated") return <LoginGate />;
+
+  return <StationSearch />;
 }

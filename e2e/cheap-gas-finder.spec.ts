@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { loginAs } from "./auth-helpers";
 
 const CURRENT_LOCATION = { latitude: 37.5587543, longitude: 127.0008881 };
 
@@ -70,6 +71,7 @@ async function stubStations(page: Page, options: { pool?: (fuel: string) => Stub
 
 test("[S8][S1] 위치 거부 후 다시 시도로 허용하면 로딩을 거쳐 결과가 표시된다", async ({ page, context }) => {
   await stubStations(page);
+  await loginAs(context, "kakao:e2e-test");
   await page.goto("/");
 
   await expect(page.getByText("위치 권한이 필요해요")).toBeVisible();
@@ -90,6 +92,7 @@ test("[S2] 유종을 경유로 바꾸면 리스트가 즉시 갱신된다", asyn
   await context.grantPermissions(["geolocation"]);
   await context.setGeolocation(CURRENT_LOCATION);
   await stubStations(page);
+  await loginAs(context, "kakao:e2e-test");
   await page.goto("/");
 
   await expect(page.getByRole("listitem")).toHaveCount(5);
@@ -105,6 +108,7 @@ test("[S3] 브랜드 필터를 하나만 남기면 해당 브랜드만 표시된
   await context.grantPermissions(["geolocation"]);
   await context.setGeolocation(CURRENT_LOCATION);
   await stubStations(page);
+  await loginAs(context, "kakao:e2e-test");
   await page.goto("/");
 
   await expect(page.getByRole("listitem")).toHaveCount(5);
@@ -122,6 +126,7 @@ test("[S4] 셀프주유소 필터를 켜면 셀프 주유소만 남고 안내 �
   await context.grantPermissions(["geolocation"]);
   await context.setGeolocation(CURRENT_LOCATION);
   await stubStations(page);
+  await loginAs(context, "kakao:e2e-test");
   await page.goto("/");
 
   await expect(page.getByRole("listitem")).toHaveCount(5);
@@ -143,6 +148,7 @@ test.fixme(
     await context.grantPermissions(["geolocation"]);
     await context.setGeolocation(CURRENT_LOCATION);
     await stubStations(page);
+    await loginAs(context, "kakao:e2e-test");
     await page.goto("/");
 
     await expect(page.getByRole("listitem")).toHaveCount(5);
@@ -158,6 +164,7 @@ test("[S6] 길찾기 버튼을 클릭하면 새 탭에 카카오맵 길찾기가
   await context.grantPermissions(["geolocation"]);
   await context.setGeolocation(CURRENT_LOCATION);
   await stubStations(page);
+  await loginAs(context, "kakao:e2e-test");
   await page.goto("/");
 
   await expect(page.getByRole("listitem")).toHaveCount(5);
@@ -186,6 +193,7 @@ test("[S7] 결과가 5곳 미만이면 부족 안내 문구가 보인다", async
   await context.grantPermissions(["geolocation"]);
   await context.setGeolocation(CURRENT_LOCATION);
   await stubStations(page, { pool: () => GASOLINE_STATIONS.slice(0, 2) });
+  await loginAs(context, "kakao:e2e-test");
   await page.goto("/");
 
   await expect(page.getByText("10km 내 2곳만 찾았어요")).toBeVisible();
@@ -196,6 +204,7 @@ test("[S7] 결과가 0곳이면 없음 안내 문구가 보인다", async ({ pag
   await context.grantPermissions(["geolocation"]);
   await context.setGeolocation(CURRENT_LOCATION);
   await stubStations(page, { pool: () => [] });
+  await loginAs(context, "kakao:e2e-test");
   await page.goto("/");
 
   await expect(page.getByText("10km 내에 조건에 맞는 주유소가 없어요")).toBeVisible();
@@ -220,6 +229,7 @@ test("[S9] API 실패 시 에러 문구가 보이고 다시 시도하면 재요�
     await route.fulfill({ json: GASOLINE_STATIONS });
   });
 
+  await loginAs(context, "kakao:e2e-test");
   await page.goto("/");
 
   await expect(page.getByText("가격 정보를 불러오지 못했어요")).toBeVisible();

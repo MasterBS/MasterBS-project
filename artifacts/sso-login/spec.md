@@ -31,7 +31,7 @@
 - **Given**: provider 인증 화면으로 이동한 상태
 - **When**: 사용자가 인증을 취소하거나, provider 쪽 오류로 인증이 실패한다
 - **Then**
-  - [ ] S3 로그인 화면으로 돌아오고, 다른 provider로 다시 시도할 수 있다(실패로 인해 앱이 멈추거나 빈 화면이 되지 않는다)
+  - [x] S3 로그인 화면으로 돌아오고, 다른 provider로 다시 시도할 수 있다(실패로 인해 앱이 멈추거나 빈 화면이 되지 않는다) — `lib/auth.ts`의 `pages: { signIn: "/" }` + `components/auth/login-gate.test.tsx`, `app/page.test.tsx`, `e2e/sso-login.spec.ts`로 확인(실제 provider의 실패/취소 리다이렉트 자체는 실 OAuth 앱 없이 재현 불가 — `?error=` 쿼리로 도착한 상태를 e2e로 대신 확인)
 
 ### ~~S4~~ (삭제: 로그아웃 결과가 "같은 화면 안 진입점 전환"에서 "로그인 화면으로 이동"으로 바뀜 — S14로 대체)
 

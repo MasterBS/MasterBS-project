@@ -8,6 +8,9 @@ import { deriveUserKey } from "@/lib/user-key";
 export const authConfig: NextAuthConfig = {
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" },
+  // 커스텀 로그인 게이트가 "/"에 있으므로, 인증 실패/취소도 next-auth 기본 에러
+  // 페이지가 아니라 이 화면으로 되돌아오게 한다(S3).
+  pages: { signIn: "/" },
   providers: [
     Kakao({
       clientId: process.env.KAKAO_CLIENT_ID,

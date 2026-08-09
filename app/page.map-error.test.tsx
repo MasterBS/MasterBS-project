@@ -11,6 +11,10 @@ vi.mock("@/hooks/use-geolocation", () => ({
 vi.mock("@/hooks/use-stations", () => ({
   useStations: (...args: unknown[]) => useStationsMock(...args),
 }));
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({ status: "authenticated", data: { userKey: "kakao:1" } }),
+  signIn: vi.fn(),
+}));
 
 function FailingKakaoMapView({ onError }: { onError?: () => void }) {
   useEffect(() => {

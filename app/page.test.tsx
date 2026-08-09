@@ -4,12 +4,18 @@ import userEvent from "@testing-library/user-event";
 
 const useGeolocationMock = vi.fn();
 const useStationsMock = vi.fn();
+const useSessionMock = vi.fn();
+const signInMock = vi.fn();
 
 vi.mock("@/hooks/use-geolocation", () => ({
   useGeolocation: () => useGeolocationMock(),
 }));
 vi.mock("@/hooks/use-stations", () => ({
   useStations: (...args: unknown[]) => useStationsMock(...args),
+}));
+vi.mock("next-auth/react", () => ({
+  useSession: () => useSessionMock(),
+  signIn: (...args: unknown[]) => signInMock(...args),
 }));
 vi.mock("@/components/gas/map-view", () => ({
   MapView: (props: { selectedId?: string | null; provider?: string }) => (
@@ -27,6 +33,11 @@ describe("Page [S1-1][S2]", () => {
   beforeEach(() => {
     useGeolocationMock.mockReset();
     useStationsMock.mockReset();
+    useSessionMock.mockReset();
+    signInMock.mockReset();
+    // 이 describe의 기존 테스트는 전부 "로그인된 상태에서 검색 화면이 보인다"는 전제라
+    // 기본값을 authenticated로 둔다. 로그인 게이트 자체의 분기는 아래 별도 describe에서 검증.
+    useSessionMock.mockReturnValue({ status: "authenticated", data: { userKey: "kakao:1" } });
     window.localStorage.clear();
   });
 
@@ -286,5 +297,55 @@ describe("Page [S1-1][S2]", () => {
     expect(useStationsMock).toHaveBeenLastCalledWith(
       expect.objectContaining({ lat: 37.56, lng: 127.0 }),
     );
+  });
+});
+
+describe("Page login gate [sso-login S10][S10][sso-login S3][S3]", () => {
+  beforeEach(() => {
+    useGeolocationMock.mockReset();
+    useStationsMock.mockReset();
+    useSessionMock.mockReset();
+    signInMock.mockReset();
+    window.localStorage.clear();
+  });
+
+  it("[sso-login S10][S10] shows the login gate instead of location/station UI when there is no session", () => {
+    useSessionMock.mockReturnValue({ status: "unauthenticated", data: null });
+
+    render(<Page />);
+
+    expect(screen.getByText("로그인해야 이용할 수 있어요")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "카카오로 로그인" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "네이버로 로그인" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "구글로 로그인" })).toBeInTheDocument();
+    expect(useGeolocationMock).not.toHaveBeenCalled();
+    expect(useStationsMock).not.toHaveBeenCalled();
+  });
+
+  it("[sso-login S10][S10] shows a full-page spinner (not the login gate or the search screen) while the session is loading", () => {
+    useSessionMock.mockReturnValue({ status: "loading", data: null });
+
+    render(<Page />);
+
+    expect(screen.queryByText("로그인해야 이용할 수 있어요")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "카카오로 로그인" })).not.toBeInTheDocument();
+    expect(useGeolocationMock).not.toHaveBeenCalled();
+  });
+
+  it("[sso-login S3][S3] stays on the login gate after a failed/cancelled sign-in and lets the user try another provider", async () => {
+    const user = userEvent.setup();
+    useSessionMock.mockReturnValue({ status: "unauthenticated", data: null });
+
+    render(<Page />);
+
+    expect(screen.getByText("로그인해야 이용할 수 있어요")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "카카오로 로그인" }));
+    expect(signInMock).toHaveBeenCalledWith("kakao");
+
+    // 실패/취소해도 세션은 여전히 unauthenticated이므로 같은 화면에 남고, 다른 provider를 누를 수 있다.
+    expect(screen.getByText("로그인해야 이용할 수 있어요")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "네이버로 로그인" }));
+    expect(signInMock).toHaveBeenCalledWith("naver");
   });
 });
