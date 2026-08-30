@@ -2,22 +2,30 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { Loader2Icon } from "lucide-react";
+import { HeartIcon, Loader2Icon } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useAccountFilters } from "@/hooks/use-account-filters";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { useMapProvider } from "@/hooks/use-map-provider";
 import { useStations } from "@/hooks/use-stations";
-import { BRAND_KEYS, MIN_RESULT_COUNT } from "@/config/opinet";
+import { MIN_RESULT_COUNT } from "@/config/opinet";
+import { Button } from "@/components/ui/button";
 import { FuelToggle } from "@/components/gas/fuel-toggle";
 import { Filters } from "@/components/gas/filters";
+import { FavoritesList } from "@/components/gas/favorites-list";
 import { SettingsSheet } from "@/components/gas/settings-sheet";
 import { StationList } from "@/components/gas/station-list";
+import { LoginGate } from "@/components/auth/login-gate";
+import { MapProviderPicker } from "@/components/auth/map-provider-picker";
+import { ProfileMenu } from "@/components/auth/profile-menu";
 import {
+  AccountErrorMessage,
   ApiErrorMessage,
   EmptyResultsMessage,
   LocationDeniedMessage,
   PartialResultsBanner,
 } from "@/components/gas/status-message";
-import type { BrandKey, FuelType } from "@/types/station";
+import type { MapProvider } from "@/types/map-provider";
 
 const MapView = dynamic(() => import("@/components/gas/map-view").then((m) => m.MapView), {
   ssr: false,
@@ -27,12 +35,28 @@ const KAKAO_MAP_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY ?? "";
 const NAVER_MAP_CLIENT_ID = process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID ?? "";
 const TMAP_APP_KEY = process.env.NEXT_PUBLIC_TMAP_APP_KEY ?? "";
 
-export default function Page() {
-  const [fuel, setFuel] = useState<FuelType>("gasoline");
-  const [brands, setBrands] = useState<BrandKey[]>(BRAND_KEYS);
+function FullPageSpinner() {
+  return (
+    <main className="flex min-h-[70vh] flex-col items-center justify-center gap-3 p-4">
+      <Loader2Icon className="size-8 animate-spin" aria-hidden="true" />
+    </main>
+  );
+}
+
+// 로그인 상태 + 계정에 지도 provider가 이미 정해진 상태에서만 렌더된다 - 위치 권한
+// 요청(useGeolocation)이 이 컴포넌트 마운트 전까지는 절대 일어나지 않도록, 세션/계정
+// provider 분기(Page)와 검색 화면 로직을 분리한다(S10, S11, S13).
+function StationSearch({
+  provider,
+  setProvider,
+}: {
+  provider: MapProvider;
+  setProvider: (provider: MapProvider) => void;
+}) {
+  const { fuel, brands, setFuel, setBrands } = useAccountFilters();
   const [selfOnly, setSelfOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { provider, setProvider } = useMapProvider();
+  const [view, setView] = useState<"search" | "favorites">("search");
   const geolocation = useGeolocation();
   const stations = useStations({
     lat: geolocation.coords?.lat ?? null,
@@ -50,74 +74,129 @@ export default function Page() {
   return (
     <main className="mx-auto max-w-6xl p-4">
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h1 className="text-lg font-bold">내 주변 저가 주유소 TOP5</h1>
-        <SettingsSheet provider={provider} onProviderChange={setProvider} />
-      </div>
-      {geolocation.status === "success" && (
-        <>
-          <FuelToggle value={fuel} onChange={setFuel} />
-          <div className="mt-3">
-            <Filters
-              brands={brands}
-              onBrandsChange={setBrands}
-              selfOnly={selfOnly}
-              onSelfOnlyChange={setSelfOnly}
-            />
-          </div>
-        </>
-      )}
-      <div className="mt-4" aria-live="polite">
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center gap-3 py-24">
-            <Loader2Icon className="size-8 animate-spin" aria-hidden="true" />
-            <span className="text-sm">근처 주유소를 찾는 중…</span>
-          </div>
-        )}
-
-        {geolocation.status === "denied" && <LocationDeniedMessage onRetry={geolocation.retry} />}
-
-        {geolocation.status === "success" && stations.status === "error" && (
-          <ApiErrorMessage onRetry={stations.retry} />
-        )}
-
-        {geolocation.status === "success" &&
-          stations.status === "success" &&
-          stations.stations.length === 0 && <EmptyResultsMessage />}
-
-        {geolocation.status === "success" &&
-          stations.status === "success" &&
-          stations.stations.length > 0 && (
+        <h1 className="text-lg font-bold">
+          {view === "favorites" ? "즐겨찾기 목록" : "내 주변 저가 주유소 TOP5"}
+        </h1>
+        <div className="flex items-center gap-2">
+          {view === "favorites" ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => setView("search")}>
+              검색으로 돌아가기
+            </Button>
+          ) : (
             <>
-              {stations.stations.length < MIN_RESULT_COUNT && (
-                <PartialResultsBanner count={stations.stations.length} />
-              )}
-              <div className="flex flex-col gap-4 md:flex-row">
-                <div className="md:order-2 md:w-1/2">
-                  <div className="h-56 md:sticky md:top-4 md:h-[520px]">
-                    <MapView
-                      provider={provider}
-                      kakaoAppKey={KAKAO_MAP_APP_KEY}
-                      naverClientId={NAVER_MAP_CLIENT_ID}
-                      tmapAppKey={TMAP_APP_KEY}
-                      currentLocation={geolocation.coords}
-                      stations={stations.stations}
-                      selectedId={selectedId}
-                    />
-                  </div>
-                </div>
-                <div className="md:order-1 md:w-1/2">
-                  <StationList
-                    stations={stations.stations}
-                    selectedId={selectedId}
-                    onSelect={setSelectedId}
-                    currentLocation={geolocation.coords}
-                    provider={provider}
-                  />
-                </div>
+              <SettingsSheet provider={provider} onProviderChange={setProvider} />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="즐겨찾기 목록"
+                onClick={() => setView("favorites")}
+              >
+                <HeartIcon aria-hidden="true" />
+              </Button>
+              <ProfileMenu onOpenFavorites={() => setView("favorites")} />
+            </>
+          )}
+        </div>
+      </div>
+      {view === "favorites" ? (
+        <FavoritesList />
+      ) : (
+        <>
+          {geolocation.status === "success" && (
+            <>
+              <FuelToggle value={fuel} onChange={setFuel} />
+              <div className="mt-3">
+                <Filters
+                  brands={brands}
+                  onBrandsChange={setBrands}
+                  selfOnly={selfOnly}
+                  onSelfOnlyChange={setSelfOnly}
+                />
               </div>
             </>
           )}
-      </div>
+          <div className="mt-4" aria-live="polite">
+            {isLoading && (
+              <div className="flex flex-col items-center justify-center gap-3 py-24">
+                <Loader2Icon className="size-8 animate-spin" aria-hidden="true" />
+                <span className="text-sm">근처 주유소를 찾는 중…</span>
+              </div>
+            )}
+
+            {geolocation.status === "denied" && <LocationDeniedMessage onRetry={geolocation.retry} />}
+
+            {geolocation.status === "success" && stations.status === "error" && (
+              <ApiErrorMessage onRetry={stations.retry} />
+            )}
+
+            {geolocation.status === "success" &&
+              stations.status === "success" &&
+              stations.stations.length === 0 && <EmptyResultsMessage />}
+
+            {geolocation.status === "success" &&
+              stations.status === "success" &&
+              stations.stations.length > 0 && (
+                <>
+                  {stations.stations.length < MIN_RESULT_COUNT && (
+                    <PartialResultsBanner count={stations.stations.length} />
+                  )}
+                  <div className="flex flex-col gap-4 md:flex-row">
+                    <div className="md:order-2 md:w-1/2">
+                      <div className="h-56 md:sticky md:top-4 md:h-[520px]">
+                        <MapView
+                          provider={provider}
+                          kakaoAppKey={KAKAO_MAP_APP_KEY}
+                          naverClientId={NAVER_MAP_CLIENT_ID}
+                          tmapAppKey={TMAP_APP_KEY}
+                          currentLocation={geolocation.coords}
+                          stations={stations.stations}
+                          selectedId={selectedId}
+                        />
+                      </div>
+                    </div>
+                    <div className="md:order-1 md:w-1/2">
+                      <StationList
+                        stations={stations.stations}
+                        selectedId={selectedId}
+                        onSelect={setSelectedId}
+                        currentLocation={geolocation.coords}
+                        provider={provider}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+          </div>
+        </>
+      )}
     </main>
   );
+}
+
+function AuthenticatedApp() {
+  const mapProviderState = useMapProvider();
+
+  if (mapProviderState.status === "loading") return <FullPageSpinner />;
+  if (mapProviderState.status === "error") {
+    return (
+      <main className="mx-auto max-w-sm p-4">
+        <AccountErrorMessage onRetry={mapProviderState.retry} />
+      </main>
+    );
+  }
+  if (mapProviderState.provider === null) {
+    return <MapProviderPicker onSelect={mapProviderState.setProvider} />;
+  }
+
+  return <StationSearch provider={mapProviderState.provider} setProvider={mapProviderState.setProvider} />;
+}
+
+export default function Page() {
+  const { status } = useSession();
+
+  if (status === "loading") return <FullPageSpinner />;
+  if (status === "unauthenticated") return <LoginGate />;
+
+  return <AuthenticatedApp />;
 }

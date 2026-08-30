@@ -11,6 +11,22 @@ vi.mock("@/hooks/use-geolocation", () => ({
 vi.mock("@/hooks/use-stations", () => ({
   useStations: (...args: unknown[]) => useStationsMock(...args),
 }));
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({ status: "authenticated", data: { userKey: "kakao:1" } }),
+  signIn: vi.fn(),
+}));
+vi.mock("@/hooks/use-map-provider", () => ({
+  useMapProvider: () => ({ status: "loaded", provider: "naver", setProvider: vi.fn() }),
+}));
+vi.mock("@/hooks/use-account-filters", () => ({
+  useAccountFilters: () => ({
+    status: "loaded",
+    fuel: "gasoline",
+    brands: ["SKE", "GSC", "HDO", "SOL", "ETC"],
+    setFuel: vi.fn(),
+    setBrands: vi.fn(),
+  }),
+}));
 
 function FailingKakaoMapView({ onError }: { onError?: () => void }) {
   useEffect(() => {

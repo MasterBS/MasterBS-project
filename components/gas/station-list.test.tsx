@@ -117,6 +117,14 @@ describe("StationList [S1-2]", () => {
     openSpy.mockRestore();
   });
 
+  it("[sso-login INV-2][INV-2] renders a favorite (heart) button for every list item", () => {
+    const stations = [makeStation({ id: "1" }), makeStation({ id: "2", name: "다른주유소" })];
+
+    render(<StationList stations={stations} currentLocation={CURRENT_LOCATION} provider="kakao" />);
+
+    expect(screen.getAllByRole("button", { name: "즐겨찾기" })).toHaveLength(2);
+  });
+
   it("[S6] clicking 길찾기 does not also select the station", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "open").mockImplementation(() => null);

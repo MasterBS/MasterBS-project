@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { SessionProvider } from "next-auth/react";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
@@ -24,7 +25,7 @@ export default function RootLayout({
     <html lang="ko" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          {children}
+          <SessionProvider>{children}</SessionProvider>
         </ThemeProvider>
         <ServiceWorkerRegister />
       </body>
