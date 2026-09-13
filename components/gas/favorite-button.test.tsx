@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FavoriteButton } from "./favorite-button";
+import { __resetFavoritesStoreForTests } from "@/hooks/use-favorites";
 import type { Station } from "@/types/station";
 
 const STATION: Station = {
@@ -22,6 +23,7 @@ describe("FavoriteButton [sso-login S7-1][S7-1][sso-login S7-2][S7-2]", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockReset();
+    __resetFavoritesStoreForTests();
   });
 
   afterEach(() => {
